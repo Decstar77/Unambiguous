@@ -1,0 +1,5 @@
+start cmd.exe /K "bin\x64\Debug\Server.exe"
+start cmd.exe /K "bin\x64\Debug\Game.exe -settings player1Settings.json"
+start cmd.exe /K "bin\x64\Debug\Game.exe -settings player2Settings.json"
+@REM start cmd.exe /K "bin\game_main.exe bin/player_one.ini"
+@REM start cmd.exe /K "bin\game_main.exe bin/player_two.ini"
