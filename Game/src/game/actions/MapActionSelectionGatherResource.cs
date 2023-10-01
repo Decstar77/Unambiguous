@@ -28,10 +28,20 @@ namespace Game {
         }
 
         public void Apply( Map map ) {
+            Entity? resource = map.LookUpEntityFromId( resourceNodeId );
+            if( resource == null ) {
+                return;
+            }
+
+            Vector2Fp p = resource.pos + new Vector2Fp( MapTile.WORLD_WIDTH_UNITS_FP / F64.Two, MapTile.WORLD_HEIGHT_UNITS_FP / F64.Two );
+
             for( int i = 0; i < entityIds.Length; i++ ) {
                 Entity? e = map.LookUpEntityFromId( entityIds[i] );
                 if( e != null && e.type == EntityType.GENERAL ) {
-                    
+                    Vector2Fp dir = e.pos - p;
+                    dir = Vector2Fp.Normalize( dir );
+                    dir *= F64.FromInt( 25 );
+                    e.target = p + dir;
                 }
             }
         }

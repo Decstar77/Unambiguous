@@ -132,15 +132,21 @@ namespace Game {
                     switch( e.type ) {
                         case EntityType.GENERAL: {
                             bigSum += e.pos.RawX;
-                            bigSum -= e.pos.RawX;
+                            bigSum -= e.pos.RawY;
                         }
                         break;
                         case EntityType.BUILDINGS_TOWN_CENTER: {
-
+                        }
+                        break;
+                        case EntityType.RESOURCE_R1: {
+                        }
+                        break;
+                        case EntityType.RESOURCE_R2: {
                         }
                         break;
                         default: {
-                            Debug.Assert( false, "Unknown entity type for map turn" );
+                            Logger.Log( "Unknown entity type for map turn in CheckSum" );
+                            //Debug.Assert( false, "Unknown entity type for map turn" );
                         }
                         break;
                     }

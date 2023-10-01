@@ -383,7 +383,6 @@ namespace Game {
                         }
                     }
                     else {
-
                         map.selection.Clear();
                         for( int i = 0; i < map.entities.Length; i++ ) {
                             Entity ent = map.entities[i];
@@ -403,10 +402,31 @@ namespace Game {
 
                 if( Raylib.IsMouseButtonReleased( MouseButton.MOUSE_RIGHT_BUTTON ) ) {
                     if( map.selection.Count > 0 ) {
-                        MapActionSelectionMove action = new MapActionSelectionMove();
-                        action.entityIds = map.selection.ToArray();
-                        action.target = mouseWorldFp;
-                        localTurn.actions.Add( action );
+
+                        Entity? entUnderMouse = null;
+                        for( int i = 0; i < map.entities.Length; i++ ) {
+                            Entity ent = map.entities[i];
+                            if( ent != null ) {
+                                Bounds bounds = ent.CaclEntityBounds();
+                                if( bounds.ContainsPoint( mouseWorld ) ) {
+                                    entUnderMouse = ent;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if( entUnderMouse == null ) {
+                            MapActionSelectionMove action = new MapActionSelectionMove();
+                            action.entityIds = map.selection.ToArray();
+                            action.target = mouseWorldFp;
+                            localTurn.actions.Add( action );
+                        }
+                        else if (entUnderMouse.type == EntityType.RESOURCE_R1) {
+                            MapActionSelectionGatherResource action = new MapActionSelectionGatherResource();
+                            action.entityIds = map.selection.ToArray();
+                            action.resourceNodeId = entUnderMouse.id;
+                            localTurn.actions.Add( action );
+                        }
                     }
                 }
             }
@@ -460,7 +480,7 @@ namespace Game {
                         int w = ent.widthInTiles * MapTile.WORLD_WIDTH_UNITS;
                         int h = ent.heightInTiles * MapTile.WORLD_HEIGHT_UNITS;
                         Rectangle r = new Rectangle(ent.visPos.X, ent.visPos.Y, w, h);
-                        Color c = Color.YELLOW;
+                        Color c = Color.ORANGE;
                         Raylib.DrawRectangleRec( r, c );
                     }
                     else if( ent.type == EntityType.RESOURCE_R2 ) {
