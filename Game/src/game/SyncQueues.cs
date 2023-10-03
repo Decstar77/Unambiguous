@@ -9,17 +9,16 @@ using System.Threading.Tasks;
 
 namespace Game {
 
-    public class SyncQueues
-    {
+    public class SyncQueues {
         public void Start() {
             player1Turns.Clear();
             player2Turns.Clear();
 
-            for (int i = 1; i <= slidingWindowWidth; i++) {
+            for( int i = 1; i <= slidingWindowWidth; i++ ) {
                 MapTurn turn = new MapTurn();
                 turn.turnNumber = i;
-                player1Turns.Enqueue(turn);
-                player2Turns.Enqueue(turn);
+                player1Turns.Enqueue( turn );
+                player2Turns.Enqueue( turn );
             }
         }
 
@@ -27,11 +26,7 @@ namespace Game {
             int player1Count = player1Turns.Count;
             int player2Count = player2Turns.Count;
 
-            if (player1Count > 0 && player2Count > 0) {
-                MapTurn player1Turn = player1Turns.Peek();
-                MapTurn player2Turn = player2Turns.Peek();
-                Debug.Assert(player1Turn.turnNumber == player2Turn.turnNumber);
-                Debug.Assert(player1Turn.checkSum == player2Turn.checkSum);
+            if( player1Count > 0 && player2Count > 0 ) {
                 return true;
             }
 
@@ -39,31 +34,31 @@ namespace Game {
 
         }
 
-        public void AddTurn(int playerNumber, MapTurn turn) {
-            if (playerNumber == 1) {
-                player1Turns.Enqueue(turn);
+        public void AddTurn( int playerNumber, MapTurn turn ) {
+            if( playerNumber == 1 ) {
+                player1Turns.Enqueue( turn );
             }
             else {
-                player2Turns.Enqueue(turn);
+                player2Turns.Enqueue( turn );
             }
         }
 
-        public MapTurn GetNextTurn(int playerNumber) {
-            if (playerNumber == 1) {
+        public MapTurn GetNextTurn( int playerNumber ) {
+            if( playerNumber == 1 ) {
                 return player1Turns.Peek();
             }
             else {
                 return player2Turns.Peek();
             }
         }
-        
+
         public void FinishTurn() {
             player1Turns.Dequeue();
             player2Turns.Dequeue();
         }
 
-        public int GetSlidingWindowWidth() { 
-            return slidingWindowWidth; 
+        public int GetSlidingWindowWidth() {
+            return slidingWindowWidth;
         }
 
         public static int turnRate = 24; // Per second

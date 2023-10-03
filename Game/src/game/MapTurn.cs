@@ -8,10 +8,10 @@ namespace Game {
         public List<MapAction> actions = new List<MapAction>();
         private List<byte> serializeContainer = new List<byte>(1024);
 
-        public byte[] SerializeToBytes() {
+        public byte[] SerializeToBytes( byte packetType, byte playerNumber ) {
             serializeContainer.Clear();
-            serializeContainer.Add( 0 );
-            serializeContainer.Add( 0 );
+            serializeContainer.Add( packetType );
+            serializeContainer.Add( playerNumber );
             ByteOps.PlonkInt( serializeContainer, turnNumber );
             ByteOps.PlonkLong( serializeContainer, checkSum );
             ByteOps.PlonkInt( serializeContainer, actions.Count );
@@ -32,6 +32,12 @@ namespace Game {
                 switch( type ) {
                     case MapActionType.SELECTION_MOVE: {
                         MapActionSelectionMove action = new MapActionSelectionMove();
+                        action.Scoop( data, ref offset );
+                        actions.Add( action );
+                    }
+                    break;
+                    case MapActionType.SELECTION_GATHER_RESOURCE: {
+                        MapActionSelectionGatherResource action = new MapActionSelectionGatherResource();
                         action.Scoop( data, ref offset );
                         actions.Add( action );
                     }

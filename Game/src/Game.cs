@@ -293,9 +293,7 @@ namespace Game {
                         localTurn.turnNumber = map.turnNumber + sync.GetSlidingWindowWidth();
                         sync.AddTurn( playerNumber, localTurn );
 
-                        byte[] bigData = localTurn.SerializeToBytes();
-                        bigData[0] = (byte)GamePacketType.MAP_TURN;
-                        bigData[1] = (byte)playerNumber;
+                        byte[] bigData = localTurn.SerializeToBytes( (byte)GamePacketType.MAP_TURN, (byte)playerNumber );
                         GameClient.NetworkSendPacket( bigData, true );
 
                         // @Speed: We just need to clear/run the construtor again. Not allocate a new one.
@@ -421,7 +419,7 @@ namespace Game {
                             action.target = mouseWorldFp;
                             localTurn.actions.Add( action );
                         }
-                        else if (entUnderMouse.type == EntityType.RESOURCE_R1) {
+                        else if( entUnderMouse.type == EntityType.RESOURCE_R1 ) {
                             MapActionSelectionGatherResource action = new MapActionSelectionGatherResource();
                             action.entityIds = map.selection.ToArray();
                             action.resourceNodeId = entUnderMouse.id;

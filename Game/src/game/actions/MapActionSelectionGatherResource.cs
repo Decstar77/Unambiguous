@@ -7,7 +7,7 @@ namespace Game {
         public EntityId resourceNodeId = EntityId.INVALID;
 
         public MapActionType GetMapActionType() {
-            return MapActionType.SELECTION_MOVE;
+            return MapActionType.SELECTION_GATHER_RESOURCE;
         }
 
         public void Plonk( List<byte> data ) {

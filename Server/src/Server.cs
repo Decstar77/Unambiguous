@@ -107,7 +107,7 @@ namespace Server {
                                 session.peers.ForEach( p => {
                                     if( p.peer.ID != netEvent.Peer.ID ) {
                                         Packet packet = default(Packet);
-                                        packet.Create( buffer );
+                                        packet.Create( buffer, PacketFlags.Reliable );
                                         p.peer.Send( netEvent.ChannelID, ref packet );
                                     }
                                 } );

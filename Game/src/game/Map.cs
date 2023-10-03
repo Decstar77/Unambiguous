@@ -4,6 +4,12 @@ using System.Numerics;
 
 namespace Game {
 
+    public struct MapTileIndex {
+        public int xIndex;
+        public int yIndex;
+    }
+
+
     public struct MapTile {
         public static int WORLD_WIDTH_UNITS = 25;
         public static int WORLD_HEIGHT_UNITS = 25;
@@ -78,13 +84,16 @@ namespace Game {
         }
 
         public void DoTurn( MapTurn player1Turn, MapTurn player2Turn ) {
+#if false
+            Logger.Log( $"Running turn {turnNumber} with player 1 turn {player1Turn.turnNumber}" );
+            Logger.Log( $"Running turn {turnNumber} with player 2 turn {player2Turn.turnNumber}" );
+#endif
+
+
             Debug.Assert( player1Turn.turnNumber == turnNumber );
             Debug.Assert( player2Turn.turnNumber == turnNumber );
             Debug.Assert( player1Turn.checkSum == player2Turn.checkSum );
 
-#if false
-            Console.WriteLine( $"Running turn {turnNumber} with sum {player1Turn.checkSum}" );
-#endif
             for( int i = 0; i < player1Turn.actions.Count; i++ ) {
                 player1Turn.actions[i].Apply( this );
             }
