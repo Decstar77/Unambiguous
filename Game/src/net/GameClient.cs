@@ -1,6 +1,6 @@
 ﻿using ENet;
 
-namespace Game {
+namespace Game.src.net {
 
     public class GameClient {
         static bool enetInitialized = false;
@@ -8,7 +8,7 @@ namespace Game {
         static Peer? server = null;
 
         public static bool ConnectToServer( string strAddress, int port ) {
-            if( enetInitialized == false && Library.Initialize() == false ) {
+            if ( enetInitialized == false && Library.Initialize() == false ) {
                 Console.WriteLine( "An error occurred while initializing ENet." );
                 return false;
             }
@@ -23,7 +23,7 @@ namespace Game {
 
             Peer peer = client.Connect(address);
             Event netEvent;
-            if( client.Service( 1000, out netEvent ) > 0 && netEvent.Type == EventType.Connect ) {
+            if ( client.Service( 1000, out netEvent ) > 0 && netEvent.Type == EventType.Connect ) {
                 Console.WriteLine( "Connected to server at {0}:{1}", strAddress, port );
                 server = peer;
                 return true;
@@ -37,12 +37,12 @@ namespace Game {
         }
 
         public static void NetoworkDisconnectFromServer() {
-            if( server.HasValue && client.IsSet ) {
+            if ( server.HasValue && client.IsSet ) {
                 server.Value.Disconnect( 0 );
                 Event netEvent;
                 bool disconnected = false;
-                while( !disconnected && client.Service( 1000, out netEvent ) > 0 ) {
-                    switch( netEvent.Type ) {
+                while ( !disconnected && client.Service( 1000, out netEvent ) > 0 ) {
+                    switch ( netEvent.Type ) {
                         case EventType.Disconnect: {
                             Console.WriteLine( "Disconnected from server" );
                             disconnected = true;
@@ -59,16 +59,16 @@ namespace Game {
                 server = null;
             }
 
-            if( client.IsSet ) {
+            if ( client.IsSet ) {
                 client.Dispose();
             }
         }
 
         public static bool NetworkPoll( byte[] packetData ) {
-            if( client.IsSet && server.HasValue ) {
+            if ( client.IsSet && server.HasValue ) {
                 Event netEvent;
-                if( client.Service( 0, out netEvent ) >= 0 ) {
-                    switch( netEvent.Type ) {
+                if ( client.Service( 0, out netEvent ) >= 0 ) {
+                    switch ( netEvent.Type ) {
                         case EventType.Connect: {
                             Console.WriteLine( "Client connected to server - ID: " + netEvent.Peer.ID );
                         }
@@ -104,15 +104,15 @@ namespace Game {
         }
 
         public static void NetworkSendPacket( byte[] packetData, bool reliable ) {
-            if( server.HasValue ) {
-                Packet netPacket = default(Packet);
+            if ( server.HasValue ) {
+                Packet netPacket = default;
                 netPacket.Create( packetData, reliable ? PacketFlags.Reliable : PacketFlags.None );
                 server.Value.Send( 0, ref netPacket );
             }
         }
 
         public static int NetworkGetPing() {
-            if( server.HasValue ) {
+            if ( server.HasValue ) {
                 return (int)server.Value.RoundTripTime;
             }
 

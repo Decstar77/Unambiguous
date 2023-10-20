@@ -18,7 +18,7 @@ namespace Game {
         public Vector2 GetClosestPoint( Vector2 p ) {
             Vector2 diff = p - center;
             float dist = MathF.Sqrt(Vector2.Dot(diff, diff));
-            if( dist < radius ) {
+            if ( dist < radius ) {
                 return p;
             }
             else {
@@ -73,7 +73,7 @@ namespace Game {
         }
 
         public Vector2 GetClosestPoint( Vector2 p ) {
-            switch( type ) {
+            switch ( type ) {
                 case BoundsType.CIRCLE:
                     return circle.GetClosestPoint( p );
                 case BoundsType.RECT:
@@ -84,7 +84,7 @@ namespace Game {
         }
 
         public bool ContainsPoint( Vector2 p ) {
-            switch( type ) {
+            switch ( type ) {
                 case BoundsType.CIRCLE:
                     return circle.ContainsPoint( p );
                 case BoundsType.RECT:
@@ -114,7 +114,7 @@ namespace Game {
         }
 
         public static bool CircleVsBounds( Circle c, Bounds b ) {
-            switch( b.type ) {
+            switch ( b.type ) {
                 case BoundsType.CIRCLE:
                     return CircleVsCircle( c, b.circle );
                 case BoundsType.RECT:
@@ -125,7 +125,7 @@ namespace Game {
         }
 
         public static bool RectVsBounds( Rect r, Bounds b ) {
-            switch( b.type ) {
+            switch ( b.type ) {
                 case BoundsType.CIRCLE:
                     return CircleVsRect( b.circle, r );
                 case BoundsType.RECT:
@@ -136,7 +136,7 @@ namespace Game {
         }
 
         public static bool BoundsVsBounds( Bounds b1, Bounds b2 ) {
-            switch( b1.type ) {
+            switch ( b1.type ) {
                 case BoundsType.CIRCLE:
                     return CircleVsBounds( b1.circle, b2 );
                 case BoundsType.RECT:

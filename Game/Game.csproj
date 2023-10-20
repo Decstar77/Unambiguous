@@ -6,15 +6,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Platforms>x64</Platforms>
-    <BaseOutputPath>C:\Projects\CS\Game\bin</BaseOutputPath>
+    <BaseOutputPath>C:\Projects\CS\Mage\bin</BaseOutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <StartupObject>Game.Game</StartupObject>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="ENet-CSharp" Version="2.4.8" />
-    <PackageReference Include="Raylib-cs" Version="4.5.0.4" />
+    <PackageReference Include="glfw-net" Version="3.3.1" />
+    <PackageReference Include="StbiSharp" Version="1.2.1" />
+    <PackageReference Include="StbTrueTypeSharp" Version="1.26.11" />
   </ItemGroup>
 
   <ItemGroup>
