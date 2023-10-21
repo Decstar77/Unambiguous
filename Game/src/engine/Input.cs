@@ -1,14 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Numerics;
 
 namespace Game {
 
     public class EngineInput {
         public bool[] keys = new bool[512];
         public bool[] prevKeys = new bool[512];
+        public bool[] mouseButtons = new bool[8];
+        public bool[] prevMouseButtons = new bool[8];
+        public Vector2 mousePos;
+        public Vector2 prevMousePos;
+        public Vector2 mouseDelta;
+        public float scrollX;
+        public float scrollY;
     }
 
     public enum InputKey {

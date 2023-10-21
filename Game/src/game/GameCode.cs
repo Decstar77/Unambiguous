@@ -3,7 +3,7 @@
 namespace Game {
 
     public enum EntityType {
-        INVALID =0,
+        INVALID = 0,
         BALL = 1,
     }
 
@@ -48,22 +48,25 @@ namespace Game {
             }
 
             if ( Engine.KeyIsDown( InputKey.W ) ) {
-                localPlayer.pos.Y += spood * dt;
+                Engine.camera.pos.Y += spood * dt;
             }
 
             if ( Engine.KeyIsDown( InputKey.S ) ) {
-                localPlayer.pos.Y -= spood * dt;
+                Engine.camera.pos.Y -= spood * dt;
             }
 
             if ( Engine.KeyIsDown( InputKey.A ) ) {
-                localPlayer.pos.X -= spood * dt;
+                Engine.camera.pos.X -= spood * dt;
             }
 
             if ( Engine.KeyIsDown( InputKey.D ) ) {
-                localPlayer.pos.X += spood * dt;
+                Engine.camera.pos.X += spood * dt;
             }
 
-            Engine.camera.pos = Vector2.Lerp( Engine.camera.pos, localPlayer.pos - new Vector2( Engine.camera.width, Engine.camera.height ) / 2.0f, 0.1f );
+            if ( Engine.input.scrollY != 0) {
+                float zoom = Engine.camera.zoom + Engine.input.scrollY * -0.1f;
+                Engine.CameraSetZoomPoint( zoom, Engine.input.mousePos );
+            }
         }
 
         public void UpdateRender( float dt ) {
@@ -103,7 +106,8 @@ namespace Game {
 
             //drawCommands.DrawRect( new Vector2( -10, -10 ), new Vector2( 10, 10 ) );
 
-            drawCommands.DrawText("Henlo boyo", new Vector2(50, 50));
+            //drawCommands.DrawText($"{Engine.camera.pos}", new Vector2(0, 0));
+            drawCommands.DrawText( $"{Engine.input.mousePos}", new Vector2( 0, 0 ) );
 
             Engine.SubmitDrawCommands( drawCommands );
         }

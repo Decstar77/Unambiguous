@@ -6,7 +6,6 @@ using System.Numerics;
 using static OpenGL.GL;
 
 namespace Game {
-
     public static class Colors {
         public static Vector4 WHITE = new Vector4(1, 1, 1, 1);
     }
@@ -164,8 +163,16 @@ namespace Game {
     }
 
     public struct Camera {
+        public float    minWidth;
+        public float    minHeight;
+
+        public float    maxWidth;
+        public float    maxHeight;
+
         public float    width;
         public float    height;
+        public float    zoom;
+
         public Vector2  pos;
     }
 
@@ -178,6 +185,9 @@ namespace Game {
         public static Window window;
         private static SizeCallback framebufferSizeCallback;
         private static KeyCallback  keyCallback;
+        private static MouseButtonCallback mouseButtonCallback;
+        private static MouseCallback cursorPosCallback;
+        private static MouseCallback scrollCallback;
         public static Matrix4x4 screenProjection;
         public static Matrix4x4 cameraProjection;
         public static ShaderProgram shapeProgram = null;
@@ -207,9 +217,13 @@ namespace Game {
 
             framebufferSizeCallback = ( _, w, h ) => OnFrameBufferSizeCallback( w, h );
             keyCallback = ( _, key, code, state, mods ) => OnKeyCallback( key, code, state, mods );
-
+            cursorPosCallback = ( _, x, y ) => OnCursorPosCallback( x, y );
+            scrollCallback = ( _, x, y ) => OnScrollCallback( x, y );
+            
             Glfw.SetFramebufferSizeCallback( window, framebufferSizeCallback );
             Glfw.SetKeyCallback( window, keyCallback );
+            Glfw.SetCursorPositionCallback( window, cursorPosCallback );
+            Glfw.SetScrollCallback( window, scrollCallback );
 
             // Center window
             var screen = Glfw.PrimaryMonitor.WorkArea;
@@ -220,7 +234,8 @@ namespace Game {
             Glfw.MakeContextCurrent( window );
             Import( Glfw.GetProcAddress );
 
-            int width, height;
+            int width;
+            int height;
             Glfw.GetFramebufferSize( window, out width, out height );
 
             Glfw.SwapInterval( 1 );
@@ -228,11 +243,13 @@ namespace Game {
             surfaceWidth = (float)width;
             surfaceHeight = (float)height;
 
-            //camera.width = 240;
-            //camera.height = 135;
-            camera.width = 480;
-            camera.height = 270;
-
+            camera.minWidth = 240;
+            camera.minHeight = 135;
+            camera.maxWidth = 480;
+            camera.maxHeight = 270;
+            camera.width = camera.minWidth;
+            camera.height = camera.minHeight;
+            camera.zoom = 0.0f;
             ResetSurface( width, height );
 
             InitShapeRendering();
@@ -352,8 +369,7 @@ namespace Game {
                         GLEnablePreMultipliedAlphaBlending();
 
                         spriteProgram.Bind();
-                        spriteProgram.SetUniformInt( "texture1", 0 );
-                        cmd.spriteTexture?.Bind( 0 );
+                        spriteProgram.SetUniformTexture( "texture1", 0, cmd.spriteTexture.texture );
                         spriteBuffer.UpdateVertexBuffer( vertices );
                         spriteBuffer.DrawVertexBuffer();
                     }
@@ -375,8 +391,6 @@ namespace Game {
             // @NOTE: Convert to [ 0, 1 ] not NDC[ -1, 1 ] because 
             // @NOTE: we're doing a small optimization here by not doing the inverse of the camera matrix
             // @NOTE: but instead just using the camera width and height
-
-            world -= camera.pos;
 
             float l = viewport.X;
             float r = viewport.X + viewport.Z;
@@ -414,11 +428,47 @@ namespace Game {
             return new Vector2( wx, wy );
         }
 
+        public static void CameraSetZoomCenter( float zoom ) {
+            zoom = Math.Clamp( zoom, 0.0f, 1.0f );
+
+            Vector2 centerPoint1 = ScreenPosToWorldPos( new Vector2( surfaceWidth / 2.0f, surfaceHeight / 2.0f ) );
+
+            camera.zoom = zoom;
+            camera.width = camera.minWidth + (camera.maxWidth - camera.minWidth) * camera.zoom;
+            camera.height = camera.minHeight + (camera.maxHeight - camera.minHeight) * camera.zoom;
+            ResetSurface( surfaceWidth, surfaceHeight );
+
+            Vector2 centerPoint2 = ScreenPosToWorldPos( new Vector2( surfaceWidth / 2.0f, surfaceHeight / 2.0f ) );
+
+            camera.pos = camera.pos + ( centerPoint1 - centerPoint2 );
+        }
+
+        public static void CameraSetZoomPoint( float zoom, Vector2 screenPoint ) {
+            zoom = Math.Clamp( zoom, 0.0f, 1.0f );
+
+            Vector2 centerPoint1 = ScreenPosToWorldPos( screenPoint );
+
+            camera.zoom = zoom;
+            camera.width = camera.minWidth + ( camera.maxWidth - camera.minWidth ) * camera.zoom;
+            camera.height = camera.minHeight + ( camera.maxHeight - camera.minHeight ) * camera.zoom;
+            ResetSurface( surfaceWidth, surfaceHeight );
+
+            Vector2 centerPoint2 = ScreenPosToWorldPos( screenPoint );
+
+            camera.pos = camera.pos + ( centerPoint1 - centerPoint2 );
+        }
+
         public static bool Poll() {
             Array.Copy( input.keys, input.prevKeys, input.keys.Length );
             bool c = !Glfw.WindowShouldClose(window);
             if ( c == true ) {
+                input.prevMousePos = input.mousePos;
+                input.scrollX = 0;
+                input.scrollY = 0;
+
                 Glfw.PollEvents();
+
+                input.mouseDelta = input.mousePos - input.prevMousePos;
 
                 for ( int i = 0x20; i < 348; i++ ) {
                     InputState state = Glfw.GetKey(window, (Keys)(i));
@@ -462,7 +512,6 @@ namespace Game {
             glBlendFunc( GL_ONE, GL_ONE_MINUS_SRC_ALPHA );
         }
 
-      
         public static void InitShapeRendering() {
             shapeProgram = new ShaderProgram( @"
                 #version 330 core
@@ -567,6 +616,16 @@ namespace Game {
 
         public static void OnKeyCallback( Keys key, int scanCode, InputState state, ModifierKeys mods ) {
 
+        }
+
+        public static void OnCursorPosCallback( double x, double y ) {
+            input.mousePos.X = (float)x;
+            input.mousePos.Y = (float)y;
+        }
+
+        public static void OnScrollCallback( double x, double y ) {
+            input.scrollX = (float)x;
+            input.scrollY = (float)y;
         }
 
         public static bool KeyIsJustDown( InputKey key ) {
