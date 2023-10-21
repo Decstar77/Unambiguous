@@ -48,7 +48,7 @@ namespace Game {
 
             int bufferStride = 0;
             unsafe { bufferStride = sizeof( VertexPositionColorTexture ); }
-            fontBuffer = Engine.GLCreateVertexBuffer( bufferStride, bufferStride * 6, true, stride => {
+            fontBuffer = new VertexBuffer( bufferStride, bufferStride * 6, true, stride => {
                 unsafe {
                     glEnableVertexAttribArray( 0 );
                     glVertexAttribPointer( 0, 3, GL_FLOAT, false, stride, NULL );
@@ -69,12 +69,8 @@ namespace Game {
             ref VertexPositionColorTexture bottomLeft,
             ref VertexPositionColorTexture bottomRight
         ) {
+            // Unpack and pack
             FontTexture texture = (FontTexture)fontTexture;
-
-            fontProgram.Bind();
-            fontProgram.SetUniformMat4( "MatrixTransform", ref Engine.screenProjection );
-            fontProgram.SetUniformTexture( "TextureSampler", 0, texture.texture );
-
             VertexPositionColorTexture[] verts = new VertexPositionColorTexture[] {
                  topLeft,
                  bottomLeft,
@@ -85,9 +81,12 @@ namespace Game {
             };
 
             Engine.GLEnableAlphaBlending();
-            Engine.GLUpdateVertexBuffer( fontBuffer, verts );
-            Engine.GLDrawVertexBuffer( fontBuffer );
 
+            fontProgram.Bind();
+            fontProgram.SetUniformMat4( "MatrixTransform", ref Engine.screenProjection );
+            fontProgram.SetUniformTexture( "TextureSampler", 0, texture.texture );
+            fontBuffer.UpdateVertexBuffer( verts );
+            fontBuffer.DrawVertexBuffer();
         }
     }
 }

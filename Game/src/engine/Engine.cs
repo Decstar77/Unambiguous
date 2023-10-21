@@ -289,14 +289,15 @@ namespace Game {
                         Vector2 c = WorldPosToScreenPos( cmd.c );
                         float r = WorldLengthToScreenLength( cmd.r ) - 2.0f;
 
+                        GLEnableAlphaBlending();
+
                         shapeProgram.Bind();
                         shapeProgram.SetUniformInt( "mode", 1 );
                         shapeProgram.SetUniformVec4( "color", cmd.color );
                         shapeProgram.SetUniformVec4( "shapePosAndSize", new Vector4( c.X, viewport.W - c.Y, 0, 0 ) );
                         shapeProgram.SetUniformVec4( "shapeRadius", new Vector4( r, 0, 0, 0 ) );
-                        GLEnableAlphaBlending();
-                        GLUpdateVertexBuffer( shapeBuffer, vertices );
-                        GLDrawVertexBuffer( shapeBuffer );
+                        shapeBuffer.UpdateVertexBuffer( vertices );
+                        shapeBuffer.DrawVertexBuffer();
                     }
                     break;
                     case DrawCommandType.RECT: {
@@ -319,12 +320,13 @@ namespace Game {
                             tr.X, tr.Y
                         };
 
+                        GLEnableAlphaBlending();
+
                         shapeProgram.Bind();
                         shapeProgram.SetUniformInt( "mode", 0 );
                         shapeProgram.SetUniformVec4( "color", cmd.color );
-                        GLEnableAlphaBlending();
-                        GLUpdateVertexBuffer( shapeBuffer, vertices );
-                        GLDrawVertexBuffer( shapeBuffer );
+                        shapeBuffer.UpdateVertexBuffer( vertices );
+                        shapeBuffer.DrawVertexBuffer();
                     }
                     break;
                     case DrawCommandType.SPRITE: {
@@ -347,13 +349,13 @@ namespace Game {
                             tr.X, tr.Y, 1.0f, 0.0f
                         };
 
+                        GLEnablePreMultipliedAlphaBlending();
+
                         spriteProgram.Bind();
                         spriteProgram.SetUniformInt( "texture1", 0 );
                         cmd.spriteTexture?.Bind( 0 );
-
-                        GLEnablePreMultipliedAlphaBlending();
-                        GLUpdateVertexBuffer( spriteBuffer, vertices );
-                        GLDrawVertexBuffer( spriteBuffer );
+                        spriteBuffer.UpdateVertexBuffer( vertices );
+                        spriteBuffer.DrawVertexBuffer();
                     }
                     break;
                     case DrawCommandType.TEXT: {
@@ -460,44 +462,7 @@ namespace Game {
             glBlendFunc( GL_ONE, GL_ONE_MINUS_SRC_ALPHA );
         }
 
-        public delegate void CreateVAttribs( int stride );
-        public static VertexBuffer GLCreateVertexBuffer( int stride, int size, bool dyanmic, CreateVAttribs createVAttribs ) {
-            VertexBuffer buffer = new VertexBuffer();
-            buffer.size = size;
-            buffer.stride = stride;
-            buffer.count = size / stride;
-            buffer.dynamic = dyanmic;
-
-            buffer.vao = glGenVertexArray();
-            buffer.vbo = glGenBuffer();
-
-            glBindVertexArray( buffer.vao );
-            glBindBuffer( GL_ARRAY_BUFFER, buffer.vbo );
-
-            unsafe {
-                glBufferData( GL_ARRAY_BUFFER, size, NULL, dyanmic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW );
-                createVAttribs.Invoke( stride );
-            }
-
-            return buffer;
-        }
-
-        public static void GLUpdateVertexBuffer<T>( VertexBuffer vertexBuffer, T[] data ) where T : unmanaged {
-            glBindBuffer( GL_ARRAY_BUFFER, vertexBuffer.vbo );
-            unsafe {
-                fixed ( T* ptr = &data[0] ) {
-                    glBufferSubData( GL_ARRAY_BUFFER, 0, vertexBuffer.size, ptr );
-                }
-            }
-            glBindBuffer( GL_ARRAY_BUFFER, 0 );
-        }
-
-        public static void GLDrawVertexBuffer( VertexBuffer vertexBuffer ) {
-            glBindVertexArray( vertexBuffer.vao );
-            glDrawArrays( GL_TRIANGLES, 0, vertexBuffer.count );
-            glBindVertexArray( 0 );
-        }
-
+      
         public static void InitShapeRendering() {
             shapeProgram = new ShaderProgram( @"
                 #version 330 core
@@ -553,7 +518,7 @@ namespace Game {
                 "
             );
 
-            shapeBuffer = GLCreateVertexBuffer( 2 * sizeof( float ), 6 * 2 * sizeof( float ), true, stride => {
+            shapeBuffer = new VertexBuffer( 2 * sizeof( float ), 6 * 2 * sizeof( float ), true, stride => {
                 unsafe {
                     glEnableVertexAttribArray( 0 );
                     glVertexAttribPointer( 0, 2, GL_FLOAT, false, stride, NULL );
@@ -586,7 +551,7 @@ namespace Game {
                 } "
             );
 
-            spriteBuffer = GLCreateVertexBuffer( 4 * sizeof( float ), 6 * 4 * sizeof( float ), true, stride => {
+            spriteBuffer = new VertexBuffer( 4 * sizeof( float ), 6 * 4 * sizeof( float ), true, stride => {
                 unsafe {
                     glEnableVertexAttribArray( 0 );
                     glVertexAttribPointer( 0, 2, GL_FLOAT, false, stride, NULL );
