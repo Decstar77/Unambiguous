@@ -103,7 +103,7 @@ namespace Game {
 
             //drawCommands.DrawRect( new Vector2( -10, -10 ), new Vector2( 10, 10 ) );
 
-            drawCommands.DrawText("Henlo boyo", new Vector2(50, 50), Engine.font );
+            drawCommands.DrawText("Henlo boyo", new Vector2(50, 50));
 
             Engine.SubmitDrawCommands( drawCommands );
         }

@@ -1,8 +1,10 @@
-﻿using StbTrueTypeSharp;
+﻿using FontStashSharp;
 
 namespace Game {
     public partial class Content {
         public static string BasePath = "C:/Projects/CS/Mage/Content/";
+        
+        private static FontSystem fontSystem = new FontSystem();
 
         public static string ResolvePath( string path ) {
             return BasePath + path;
@@ -78,15 +80,14 @@ namespace Game {
             return false;
         }
 
-        public static Font LoadFonts() {
-            string path = BasePath + "fonts\\DroidSans.ttf";
-            FontBaker fontBaker = new FontBaker();
-            fontBaker.Begin( 512, 512 );
-            fontBaker.Add( File.ReadAllBytes( path ), 32, new[] { FontCharacterRange.BasicLatin } );
-            FontBakerResult charData = fontBaker.End();
-            FontTexture fontTexture = new FontTexture( charData.Width, charData.Height, charData.Bitmap );
-            Font font = new Font(fontTexture, charData.Glyphs, 32);
+        public static void LoadFonts() {
+            fontSystem.AddFont( File.ReadAllBytes( ResolvePath( "fonts/DroidSans.ttf" ) ) );
+        }
+
+        public static DynamicSpriteFont GetFont() {
+            DynamicSpriteFont font = fontSystem.GetFont( 32 );
             return font;
         }
+        
     }
 }

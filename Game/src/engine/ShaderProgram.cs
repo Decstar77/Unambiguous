@@ -34,7 +34,7 @@ namespace Game {
             glDeleteShader( fragmentShaderId );
         }
 
-        public void Use() {
+        public void Bind() {
             glUseProgram( programId );
         }
 
@@ -50,6 +50,26 @@ namespace Game {
                 CacheUniformLocation( name );
             }
             glUniform4f( uniformLocations[name], v.X, v.Y, v.Z, v.W );
+        }
+
+        public void SetUniformMat4( string name, ref Matrix4x4 v ) {
+            if ( !uniformLocations.ContainsKey( name ) ) {
+                CacheUniformLocation( name );
+            }
+            unsafe {
+                fixed ( float* ptr = &v.M11 ) {
+                    glUniformMatrix4fv( uniformLocations[name], 1, false, ptr );
+                }
+            }
+        }
+
+        public void SetUniformTexture( string name, int textureSlot, uint textureHandle ) {
+            if ( !uniformLocations.ContainsKey( name ) ) {
+                CacheUniformLocation( name );
+            }
+            glActiveTexture( GL_TEXTURE0 + textureSlot );
+            glBindTexture( GL_TEXTURE_2D, textureHandle );
+            glUniform1i( uniformLocations[name], textureSlot );
         }
 
         private void CacheUniformLocation( string name ) {

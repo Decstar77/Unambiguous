@@ -1,9 +1,9 @@
-﻿using GLFW;
+﻿using FontStashSharp;
+using GLFW;
 using OpenAL;
 using System;
 using System.Numerics;
 using static OpenGL.GL;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Game {
 
@@ -68,13 +68,12 @@ namespace Game {
             commands.Add( cmd );
         }
 
-        public void DrawText( string text, Vector2 bottomLeft, Font font ) {
+        public void DrawText( string text, Vector2 p ) {
             DrawCommand cmd = new DrawCommand();
             cmd.type = DrawCommandType.TEXT;
             cmd.color = Colors.WHITE;
-            cmd.bl = bottomLeft;
-            cmd.c = font.MeasureText( text );
             cmd.text = text;
+            cmd.c = p;
             commands.Add( cmd );
         }
 
@@ -170,15 +169,6 @@ namespace Game {
         public Vector2  pos;
     }
 
-    public class VertexBuffer {
-        public uint     vao;
-        public uint     vbo;
-        public int      size;
-        public int      count;
-        public int      stride;
-        public bool     dynamic;
-    }
-
     public static class Engine {
         public static EngineInput input = new EngineInput();
         public static float surfaceWidth = 0;
@@ -194,11 +184,9 @@ namespace Game {
         public static VertexBuffer  shapeBuffer = null;
         public static ShaderProgram spriteProgram = null;
         public static VertexBuffer  spriteBuffer = null;
-        public static ShaderProgram fontProgram = null;
-        public static VertexBuffer  fontBuffer = null;
+        public static FontRenderer fontRenderer = null;
         public static IntPtr alDevice;
         public static IntPtr alContext;
-        public static Font font = null;
 
         public static void Init() {
             Glfw.WindowHint( Hint.ClientApi, ClientApi.OpenGL );
@@ -247,11 +235,11 @@ namespace Game {
 
             ResetSurface( width, height );
 
-            font = Content.LoadFonts();
-
             InitShapeRendering();
             InitSpriteRendering();
-            InitFontRendering();
+
+            Content.LoadFonts();
+            fontRenderer = new FontRenderer();
 
             alDevice = ALC10.alcOpenDevice( null );
             if ( alDevice == IntPtr.Zero ) {
@@ -301,7 +289,7 @@ namespace Game {
                         Vector2 c = WorldPosToScreenPos( cmd.c );
                         float r = WorldLengthToScreenLength( cmd.r ) - 2.0f;
 
-                        shapeProgram.Use();
+                        shapeProgram.Bind();
                         shapeProgram.SetUniformInt( "mode", 1 );
                         shapeProgram.SetUniformVec4( "color", cmd.color );
                         shapeProgram.SetUniformVec4( "shapePosAndSize", new Vector4( c.X, viewport.W - c.Y, 0, 0 ) );
@@ -331,7 +319,7 @@ namespace Game {
                             tr.X, tr.Y
                         };
 
-                        shapeProgram.Use();
+                        shapeProgram.Bind();
                         shapeProgram.SetUniformInt( "mode", 0 );
                         shapeProgram.SetUniformVec4( "color", cmd.color );
                         GLEnableAlphaBlending();
@@ -359,7 +347,7 @@ namespace Game {
                             tr.X, tr.Y, 1.0f, 0.0f
                         };
 
-                        spriteProgram.Use();
+                        spriteProgram.Bind();
                         spriteProgram.SetUniformInt( "texture1", 0 );
                         cmd.spriteTexture?.Bind( 0 );
 
@@ -369,80 +357,8 @@ namespace Game {
                     }
                     break;
                     case DrawCommandType.TEXT: {
-                        Vector2 basePos = cmd.bl;
-                        Vector2 textDims = cmd.c;
-
-                        float textOffsetX = 0.0f;
-
-                        for ( int i = 0; i < cmd.text.Length; i++ ) {
-                            char c = cmd.text[i];
-
-                            if ( font.glyphs.ContainsKey( c ) ) {
-                                FontGlyphInfo info = font.glyphs[c];
-
-                                if ( c != ' ' || c != '\t' ) {
-                                    float px = basePos.X + textOffsetX;
-                                    float py = basePos.Y;
-                                    float w = info.width;
-                                    float h = info.height;
-
-                                    Vector4 bl =  new Vector4( px,           py,                0.0f, 0.0f );
-                                    Vector4 tl =  new Vector4( px,           py + h,            0.0f, 0.0f );
-                                    Vector4 br =  new Vector4( px + w,       py,                0.0f, 0.0f );
-                                    Vector4 tr =  new Vector4( px + w,       py + h,            0.0f, 0.0f );
-
-                                    tl = Vector4.Transform( new Vector4( tl.X, tl.Y, 0.0f, 1.0f ), cameraProjection );
-                                    bl = Vector4.Transform( new Vector4( bl.X, bl.Y, 0.0f, 1.0f ), cameraProjection );
-                                    br = Vector4.Transform( new Vector4( br.X, br.Y, 0.0f, 1.0f ), cameraProjection );
-                                    tr = Vector4.Transform( new Vector4( tr.X, tr.Y, 0.0f, 1.0f ), cameraProjection );
-
-                                    float[] vertices = new float[]{
-                                        tl.X, tl.Y, 0.0f ,0.0f,
-                                        bl.X, bl.Y, 0.0f, 1.0f,
-                                        br.X, br.Y, 1.0f, 1.0f,
-                                        tl.X, tl.Y, 0.0f, 0.0f,
-                                        br.X, br.Y, 1.0f, 1.0f,
-                                        tr.X, tr.Y, 1.0f, 0.0f
-                                    };
-
-                                    fontProgram.Use();
-                                    fontProgram.SetUniformInt( "fontTexture", 0 );
-                                    font.texture?.Bind( 0 );
-
-                                    //GLEnableAlphaBlending();
-                                    GLUpdateVertexBuffer( fontBuffer, vertices );
-                                    GLDrawVertexBuffer( fontBuffer );
-                                }
-
-                                textOffsetX += info.xAdvance;
-                            }
-                        }
-
-                        //Vector4 bl =  new Vector4( bottomLeft.X,                bottomLeft.Y,               0.0f, 0.0f );
-                        //Vector4 tl =  new Vector4( bottomLeft.X,                bottomLeft.X + textDims.Y,  0.0f, 0.0f );
-                        //Vector4 br =  new Vector4( bottomLeft.X + textDims.X,   bottomLeft.X,               0.0f, 0.0f );
-                        //Vector4 tr =  new Vector4( bottomLeft.X + textDims.X,   bottomLeft.X + textDims.Y,  0.0f, 0.0f );
-
-                        //tl = Vector4.Transform( new Vector4( tl.X, tl.Y, 0.0f, 1.0f ), cameraProjection );
-                        //bl = Vector4.Transform( new Vector4( bl.X, bl.Y, 0.0f, 1.0f ), cameraProjection );
-                        //br = Vector4.Transform( new Vector4( br.X, br.Y, 0.0f, 1.0f ), cameraProjection );
-                        //tr = Vector4.Transform( new Vector4( tr.X, tr.Y, 0.0f, 1.0f ), cameraProjection );
-
-                        //float[] vertices = new float[]{
-                        //    tl.X, tl.Y, 0.0f ,0.0f,
-                        //    bl.X, bl.Y, 0.0f, 1.0f,
-                        //    br.X, br.Y, 1.0f, 1.0f,
-                        //    tl.X, tl.Y, 0.0f, 0.0f,
-                        //    br.X, br.Y, 1.0f, 1.0f,
-                        //    tr.X, tr.Y, 1.0f, 0.0f
-                        //};
-
-                        //fontProgram.Use();
-                        ////fontProgram.SetUniformInt( "fontTexture", 0 );
-                        ////font.texture?.Bind( 0 );
-
-                        //GLUpdateVertexBuffer( fontBuffer, vertices );
-                        //GLDrawVertexBuffer( fontBuffer );
+                        DynamicSpriteFont font = Content.GetFont();
+                        font.DrawText( fontRenderer, cmd.text, cmd.c, FSColor.White );
                     }
                     break;
                 }
@@ -566,37 +482,10 @@ namespace Game {
             return buffer;
         }
 
-        public static VertexBuffer GLCreateVertexBuffer( float[] data, int stride, bool dyanmic ) {
-            VertexBuffer buffer = new VertexBuffer();
-            buffer.size = data.Length * sizeof( float );
-            buffer.stride = stride;
-            buffer.count = data.Length / stride;
-            buffer.dynamic = dyanmic;
-
-            buffer.vao = glGenVertexArray();
-            buffer.vbo = glGenBuffer();
-
-            glBindVertexArray( buffer.vao );
-            glBindBuffer( GL_ARRAY_BUFFER, buffer.vbo );
-
-            unsafe {
-                fixed ( float* ptr = &data[0] ) {
-                    glBufferData( GL_ARRAY_BUFFER, buffer.size, ptr, GL_STATIC_DRAW );
-                    glVertexAttribPointer( 0, 2, GL_FLOAT, false, 4 * sizeof( float ), NULL );
-                    glVertexAttribPointer( 1, 2, GL_FLOAT, false, 4 * sizeof( float ), (void*)( 2 * sizeof( float ) ) );
-                }
-            }
-
-            glEnableVertexAttribArray( 0 );
-            glEnableVertexAttribArray( 1 );
-
-            return buffer;
-        }
-
-        public static void GLUpdateVertexBuffer( VertexBuffer vertexBuffer, float[] data ) {
+        public static void GLUpdateVertexBuffer<T>( VertexBuffer vertexBuffer, T[] data ) where T : unmanaged {
             glBindBuffer( GL_ARRAY_BUFFER, vertexBuffer.vbo );
             unsafe {
-                fixed ( float* ptr = &data[0] ) {
+                fixed ( T* ptr = &data[0] ) {
                     glBufferSubData( GL_ARRAY_BUFFER, 0, vertexBuffer.size, ptr );
                 }
             }
@@ -698,42 +587,6 @@ namespace Game {
             );
 
             spriteBuffer = GLCreateVertexBuffer( 4 * sizeof( float ), 6 * 4 * sizeof( float ), true, stride => {
-                unsafe {
-                    glEnableVertexAttribArray( 0 );
-                    glVertexAttribPointer( 0, 2, GL_FLOAT, false, stride, NULL );
-                    glEnableVertexAttribArray( 1 );
-                    glVertexAttribPointer( 1, 2, GL_FLOAT, false, stride, (void*)( 2 * sizeof( float ) ) );
-                }
-            } );
-        }
-
-        public static void InitFontRendering() {
-            fontProgram = new ShaderProgram( @"
-                #version 330 core
-                layout (location = 0) in vec2 pos;
-                layout (location = 1) in vec2 uv;
-                out vec2 texCoord;
-                void main()
-                {
-                    texCoord = uv;
-                    gl_Position = vec4(pos.x, pos.y, 0.0, 1.0);
-                }",
-
-                @"
-                #version 330 core
-                out vec4 result;
-                in vec2 texCoord;
-                uniform sampler2D fontTexture;
-                void main()
-                {
-                    float a = texture(fontTexture, texCoord).r;
-                    result = vec4(1,1,1,a);
-                    //result = vec4(texCoord.x, texCoord.y, 0.0, 1.0);
-                    //result = vec4(1,1,1, 1.0);
-                } "
-            );
-
-            fontBuffer = GLCreateVertexBuffer( 4 * sizeof( float ), 6 * 4 * sizeof( float ), true, stride => {
                 unsafe {
                     glEnableVertexAttribArray( 0 );
                     glVertexAttribPointer( 0, 2, GL_FLOAT, false, stride, NULL );
