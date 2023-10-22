@@ -47,26 +47,34 @@ namespace Game {
                 Engine.Close();
             }
 
+            Vector2 dir = Vector2.Zero;
             if ( Engine.KeyIsDown( InputKey.W ) ) {
-                Engine.camera.pos.Y += spood * dt;
+                dir.Y += 1;
             }
 
             if ( Engine.KeyIsDown( InputKey.S ) ) {
-                Engine.camera.pos.Y -= spood * dt;
+                dir.Y -= 1;
             }
 
             if ( Engine.KeyIsDown( InputKey.A ) ) {
-                Engine.camera.pos.X -= spood * dt;
+                dir.X -= 2;
             }
 
             if ( Engine.KeyIsDown( InputKey.D ) ) {
-                Engine.camera.pos.X += spood * dt;
+                dir.X += 2;
+            }
+
+            if ( dir != Vector2.Zero ) {
+                dir = Vector2.Normalize( dir );
+                localPlayer.pos += dir * spood * dt;
             }
 
             if ( Engine.input.scrollY != 0) {
                 float zoom = Engine.camera.zoom + Engine.input.scrollY * -0.1f;
                 Engine.CameraSetZoomPoint( zoom, Engine.input.mousePos );
             }
+
+            Engine.camera.pos = Vector2.Lerp( Engine.camera.pos, localPlayer.pos - new Vector2( Engine.camera.width, Engine.camera.height ) / 2.0f, 0.1f );
         }
 
         public void UpdateRender( float dt ) {
@@ -104,7 +112,17 @@ namespace Game {
                 drawCommands.DrawCircle( playerVanishingPoint, 1 );
             }
 
+            for ( int x = 0; x < grid.widthCount; x++ ) {
+                for ( int y = grid.heightCount - 1; y >= 0; y-- ) {
+                    if ( grid.tiles[x, y, 1].sprite != null ) {
+                        //drawCommands.DrawBox( grid.tiles[x, y, 1].boxCollider );
+                    }
+                }
+            }
+
+            drawCommands.DrawPolyCollider();
             //drawCommands.DrawRect( new Vector2( -10, -10 ), new Vector2( 10, 10 ) );
+            //drawCommands.DrawCircle( localPlayer.pos, 1 );
 
             //drawCommands.DrawText($"{Engine.camera.pos}", new Vector2(0, 0));
             drawCommands.DrawText( $"{Engine.input.mousePos}", new Vector2( 0, 0 ) );

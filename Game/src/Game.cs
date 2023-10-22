@@ -1,5 +1,6 @@
 ﻿using GLFW;
 using OpenGL;
+using System.Diagnostics;
 using System.Numerics;
 using System.Text.Json;
 namespace Game {
@@ -41,11 +42,6 @@ namespace Game {
 
     }
 
-    public class AttribBoyo : Attribute {
-
-    }
-
-
     public class Game {
         public static GameScreen screen = new SreenMainMenu();
 
@@ -54,39 +50,28 @@ namespace Game {
 
             Engine.Init();
 
-            SpriteTexture? sprTile = Content.LoadSpriteTexture( "tile_test.png" );
-            if ( sprTile == null ) {
-                return;
-            }
-
             GameCode code = new GameCode();
             code.Init();
 
             int tickRate = 60;
             float tickTime = 1.0f / tickRate;
             float timeAccumc = 0.0f;
-
             double nowTime = Glfw.Time;
-            while ( Engine.Poll() ) {
 
+            while ( Engine.Poll() ) {
                 double newTime = Glfw.Time;
                 double deltaTime = newTime - nowTime;
                 nowTime = newTime;
 
+                double benchTime = Glfw.Time;
                 timeAccumc += (float)deltaTime;
                 while ( timeAccumc > tickTime ) {
                     timeAccumc -= tickTime;
                     code.UpdateTick( tickTime );
                 }
 
-                //DrawCommands drawCommands = new DrawCommands();
-                //drawCommands.RenderDrawSprite( sprTile, new Vector2( 0, 0 ), 0, new Vector2( 1, 1 ) );
-                //drawCommands.RenderDrawSprite( sprMan, new Vector2( 0, 0 ), 0, new Vector2( 1, 1 ) );
-
-                GL.glClearColor( 0.2f, 0.3f, 0.3f, 1.0f );
-                GL.glClear( GL.GL_COLOR_BUFFER_BIT );
-                //Engine.SubmitDrawCommands( drawCommands );
                 code.UpdateRender( (float)deltaTime );
+                //Logger.Log( $"{ ( Glfw.Time - benchTime ) * 1000 }" );
 
                 Glfw.SwapBuffers( Engine.window );
             }

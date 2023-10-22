@@ -13,6 +13,7 @@ namespace Game {
         public int              zIndex;
         public Vector2          worldPos;
         public Vector2          worldVanishingPoint;
+        public PolyCollider     polyCollider;
         public SpriteTexture?   sprite;
     }
 
@@ -28,6 +29,7 @@ namespace Game {
         public int levelCount;
         public IsoTile[,,] tiles = null;
         public static Vector2 localVanishingPoint = new Vector2( 0, -9 );
+        public static float IsoRotation = MathF.Atan( 1.0f / 2.0f ); // 26.565 deg
 
         public IsoGrid( int wc, int hc, int lc ) {
             widthCount = wc;

@@ -1,11 +1,17 @@
 ﻿using FontStashSharp;
 using GLFW;
-using OpenAL;
+using OpenGL;
 using System;
 using System.Numerics;
 using static OpenGL.GL;
 
 namespace Game {
+    public struct DrawTriangle {
+        public Vector2 a;
+        public Vector2 b;
+        public Vector2 c;
+    }
+
     public static class Colors {
         public static Vector4 WHITE = new Vector4(1, 1, 1, 1);
     }
@@ -23,7 +29,6 @@ namespace Game {
         public DrawCommandType       type;
         public Vector4               color;
 
-
         public Vector2              c;
         public float                r;
 
@@ -31,6 +36,8 @@ namespace Game {
         public Vector2              tr;
         public Vector2              bl;
         public Vector2              br;
+
+        public Vector2[]            verts;
 
         public SpriteTexture?       spriteTexture;
 
@@ -64,6 +71,22 @@ namespace Game {
             cmd.br = new Vector2( tr.X, bl.Y );
             cmd.tr = tr;
             cmd.tl = new Vector2( bl.X, tr.Y );
+            commands.Add( cmd );
+        }
+
+        public void DrawBox( BoxCollider box ) {
+            DrawCommand cmd = new DrawCommand();
+            cmd.type = DrawCommandType.RECT;
+            cmd.color = Colors.WHITE;
+            box.GetVerts( out cmd.bl, out cmd.br, out cmd.tr, out cmd.tl );
+            commands.Add( cmd );
+        }
+
+        public void DrawPolyCollider( PolyCollider polyCollider ) {
+            DrawCommand cmd = new DrawCommand();
+            cmd.type = DrawCommandType.LINE;
+            cmd.color = Colors.WHITE;
+            cmd.verts = polyCollider.verts;
             commands.Add( cmd );
         }
 
@@ -197,7 +220,8 @@ namespace Game {
         public static FontRenderer fontRenderer = null;
         public static IntPtr alDevice;
         public static IntPtr alContext;
-
+        public static SoLoud.Soloud soloud;
+        
         public static void Init() {
             Glfw.WindowHint( Hint.ClientApi, ClientApi.OpenGL );
             Glfw.WindowHint( Hint.ContextVersionMajor, 3 );
@@ -215,10 +239,10 @@ namespace Game {
                 Window.None
             );
 
-            framebufferSizeCallback = ( _, w, h ) => OnFrameBufferSizeCallback( w, h );
-            keyCallback = ( _, key, code, state, mods ) => OnKeyCallback( key, code, state, mods );
-            cursorPosCallback = ( _, x, y ) => OnCursorPosCallback( x, y );
-            scrollCallback = ( _, x, y ) => OnScrollCallback( x, y );
+            framebufferSizeCallback =   ( _, w, h ) =>                      OnFrameBufferSizeCallback( w, h );
+            keyCallback =               ( _, key, code, state, mods ) =>    OnKeyCallback( key, code, state, mods );
+            cursorPosCallback =         ( _, x, y ) =>                      OnCursorPosCallback( x, y );
+            scrollCallback =            ( _, x, y ) =>                      OnScrollCallback( x, y );
             
             Glfw.SetFramebufferSizeCallback( window, framebufferSizeCallback );
             Glfw.SetKeyCallback( window, keyCallback );
@@ -258,29 +282,18 @@ namespace Game {
             Content.LoadFonts();
             fontRenderer = new FontRenderer();
 
-            alDevice = ALC10.alcOpenDevice( null );
-            if ( alDevice == IntPtr.Zero ) {
-                Console.WriteLine( "Failed to open audio device" );
-                return;
-            }
-
-            alContext = ALC10.alcCreateContext( alDevice, null );
-            if ( alContext == IntPtr.Zero ) {
-                Console.WriteLine( "Failed to create audio context" );
-                return;
-            }
-
-            ALC10.alcMakeContextCurrent( alContext );
-
-            if ( ALC10.alcGetError( alDevice ) == ALC10.ALC_NO_ERROR ) {
-                Console.WriteLine( "Audio context created" );
-            }
-            else {
-                Console.WriteLine( "Failed to create audio context" );
-            }
+            //soloud = new SoLoud.Soloud();
+            //soloud.Init( SoLoud.Soloud.CLIP_ROUNDOFF );
+            //soloud.SetGlobalVolume( 4 );
+            //SoLoud.Wav wav = new SoLoud.Wav();
+            //wav.Load( "C:/Projects/CS/Mage/Content/basic_death_1.wav" );
+            //soloud.Play( wav );
         }
 
         public static void SubmitDrawCommands( DrawCommands commands ) {
+            glClearColor( 0.2f, 0.3f, 0.3f, 1.0f );
+            glClear( GL_COLOR_BUFFER_BIT );
+
             foreach ( DrawCommand cmd in commands.commands ) {
                 switch ( cmd.type ) {
                     case DrawCommandType.CIRCLE: {
@@ -303,7 +316,7 @@ namespace Game {
                             tr.X, tr.Y
                         };
 
-                        Vector2 c = WorldPosToScreenPos( cmd.c );
+                        Vector2 c = WorldPosToScreenPos( cmd.c - camera.pos );
                         float r = WorldLengthToScreenLength( cmd.r ) - 2.0f;
 
                         GLEnableAlphaBlending();

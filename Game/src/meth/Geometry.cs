@@ -1,16 +1,16 @@
 ﻿using System.Numerics;
 
 namespace Game {
-    public struct Circle {
+    public struct CircleBounds {
         public Vector2 center;
         public float radius;
 
-        public Circle() {
+        public CircleBounds() {
             center = Vector2.Zero;
             radius = 0;
         }
 
-        public Circle( Vector2 center, float radius ) {
+        public CircleBounds( Vector2 center, float radius ) {
             this.center = center;
             this.radius = radius;
         }
@@ -31,11 +31,11 @@ namespace Game {
         }
     }
 
-    public struct Rect {
+    public struct RectBounds {
         public Vector2 min;
         public Vector2 max;
 
-        public Rect() {
+        public RectBounds() {
             min = Vector2.Zero;
             max = Vector2.Zero;
         }
@@ -58,6 +58,49 @@ namespace Game {
         }
     }
 
+    public struct BoxCollider {
+        public Vector2 center;
+        public Vector2 dims;
+        public float rotation;
+
+        public BoxCollider() {
+            dims = Vector2.Zero;
+            center = Vector2.Zero;
+            rotation = 0;
+        }
+
+        public BoxCollider( Vector2 center, Vector2 dims, float rotation ) {
+            this.center = center;
+            this.dims = dims;
+            this.rotation = rotation;
+        }
+
+        public void GetVerts( out Vector2 v1, out Vector2 v2, out Vector2 v3, out Vector2 v4 ) {
+            (float sin, float cos) = MathF.SinCos( rotation );
+            float w = dims.X / 2;
+            float h = dims.Y / 2;
+            v1 = center + new Vector2( -w * cos - h * sin, -w * sin + h * cos );
+            v2 = center + new Vector2( w * cos - h * sin, w * sin + h * cos );
+            v3 = center + new Vector2( w * cos + h * sin, w * sin - h * cos );
+            v4 = center + new Vector2( -w * cos + h * sin, -w * sin - h * cos );
+        }
+    }
+
+    public struct PolyCollider {
+        public Vector2[] verts;
+        public PolyCollider() {
+            verts = new Vector2[0];
+        }
+
+        public PolyCollider( int count) {
+            verts = new Vector2[count];
+        }
+
+        public PolyCollider( params Vector2[] verts ) {
+            this.verts = verts;
+        }
+    }
+
     public enum BoundsType {
         INVALID = 0,
         CIRCLE,
@@ -66,8 +109,8 @@ namespace Game {
 
     public struct Bounds {
         public BoundsType type = BoundsType.INVALID;
-        public Circle circle = new Circle();
-        public Rect rect = new Rect();
+        public CircleBounds circle = new CircleBounds();
+        public RectBounds rect = new RectBounds();
 
         public Bounds() {
         }
@@ -96,24 +139,24 @@ namespace Game {
     }
 
     public static class Intersections {
-        public static bool CircleVsCircle( Circle c1, Circle c2 ) {
+        public static bool CircleVsCircle( CircleBounds c1, CircleBounds c2 ) {
             // Do this with squared lengths to avoid a sqrt call
             float distance = (c1.center - c2.center).LengthSquared();
             float radiusSum = c1.radius + c2.radius;
             return distance <= radiusSum * radiusSum;
         }
 
-        public static bool CircleVsRect( Circle c, Rect r ) {
+        public static bool CircleVsRect( CircleBounds c, RectBounds r ) {
             Vector2 closest = r.GetClosestPoint(c.center);
             return ( closest - c.center ).LengthSquared() < c.radius * c.radius;
         }
 
-        public static bool RectVsRect( Rect r1, Rect r2 ) {
+        public static bool RectVsRect( RectBounds r1, RectBounds r2 ) {
             return r1.min.X <= r2.max.X && r1.max.X >= r2.min.X &&
                 r1.min.Y <= r2.max.Y && r1.max.Y >= r2.min.Y;
         }
 
-        public static bool CircleVsBounds( Circle c, Bounds b ) {
+        public static bool CircleVsBounds( CircleBounds c, Bounds b ) {
             switch ( b.type ) {
                 case BoundsType.CIRCLE:
                     return CircleVsCircle( c, b.circle );
@@ -124,7 +167,7 @@ namespace Game {
             }
         }
 
-        public static bool RectVsBounds( Rect r, Bounds b ) {
+        public static bool RectVsBounds( RectBounds r, Bounds b ) {
             switch ( b.type ) {
                 case BoundsType.CIRCLE:
                     return CircleVsRect( b.circle, r );
