@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
+﻿using OpenTK.Mathematics;
 
-namespace Game {
+namespace Game
+{
 
     public struct IsoTile {
         public int              xIndex;

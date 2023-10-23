@@ -1,8 +1,8 @@
 ﻿using FontStashSharp.Interfaces;
+using OpenTK.Graphics.OpenGL4;
 
-using static OpenGL.GL;
-
-namespace Game {
+namespace Game
+{
     public class FontRenderer : IFontStashRenderer2 {
         public ITexture2DManager TextureManager { get; }
         public ShaderProgram fontProgram = null;
@@ -20,8 +20,8 @@ namespace Game {
 
                 uniform mat4 MatrixTransform;
 
-                varying vec4 v_color;
-                varying vec2 v_texCoords;
+                out vec4 v_color;
+                out vec2 v_texCoords;
 
                 void main()
                 {
@@ -35,12 +35,13 @@ namespace Game {
                 #version 330 core
                 uniform sampler2D TextureSampler;
 
-                varying vec4 v_color;
-                varying vec2 v_texCoords;
+                in vec4 v_color;
+                in vec2 v_texCoords;
 
+                out vec4 FragColor;
                 void main()
                 {
-	                gl_FragColor = v_color * texture2D(TextureSampler, v_texCoords);
+	                FragColor = v_color * texture2D(TextureSampler, v_texCoords);
                 }
             ";
 
@@ -49,16 +50,14 @@ namespace Game {
             int bufferStride = 0;
             unsafe { bufferStride = sizeof( VertexPositionColorTexture ); }
             fontBuffer = new VertexBuffer( bufferStride, bufferStride * 6, true, stride => {
-                unsafe {
-                    glEnableVertexAttribArray( 0 );
-                    glVertexAttribPointer( 0, 3, GL_FLOAT, false, stride, NULL );
+                GL.EnableVertexAttribArray( 0 );
+                GL.VertexAttribPointer( 0, 3, VertexAttribPointerType.Float, false, stride, 0 );
 
-                    glEnableVertexAttribArray( 1 );
-                    glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, true, stride, (void*) (sizeof( float ) * 3) );
+                GL.EnableVertexAttribArray( 1 );
+                GL.VertexAttribPointer( 1, 4, VertexAttribPointerType.UnsignedByte, true, stride, sizeof( float ) * 3 );
 
-                    glEnableVertexAttribArray( 2 );
-                    glVertexAttribPointer( 2, 2, GL_FLOAT, false, stride, (void*) (sizeof( float ) * 4) );
-                }
+                GL.EnableVertexAttribArray( 2 );
+                GL.VertexAttribPointer( 2, 2, VertexAttribPointerType.Float, false, stride, sizeof( float ) * 4 );
             } );
         }
 

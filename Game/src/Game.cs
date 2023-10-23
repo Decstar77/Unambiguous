@@ -1,13 +1,6 @@
-﻿using GLFW;
-using OpenGL;
-using System.Diagnostics;
-using System.Numerics;
+﻿using OpenTK.Windowing.Desktop;
 using System.Text.Json;
 namespace Game {
-
-    public interface GameScreen {
-        public GameScreen Update();
-    }
 
     public class GameSettings {
         public static GameSettings Current = new GameSettings();
@@ -19,64 +12,12 @@ namespace Game {
         public int WindowPosY { get; set; } = -1;
     }
 
-    public class SreenMainMenu : GameScreen {
-        public bool initialized = false;
-
-        public virtual GameScreen Update() {
-            return this;
-        }
-    }
-
-    public class ScreenGame : GameScreen {
-        // Todo: Put this in a game local class!
-        public bool initialized = false;
-
-
-        public virtual GameScreen Update() {
-            if ( initialized == false ) {
-
-            }
-
-            return this;
-        }
-
-    }
-
     public class Game {
-        public static GameScreen screen = new SreenMainMenu();
 
         public static void Main( string[] args ) {
             ParseArgs( args );
-
-            Engine.Init();
-
-            GameCode code = new GameCode();
-            code.Init();
-
-            int tickRate = 60;
-            float tickTime = 1.0f / tickRate;
-            float timeAccumc = 0.0f;
-            double nowTime = Glfw.Time;
-
-            while ( Engine.Poll() ) {
-                double newTime = Glfw.Time;
-                double deltaTime = newTime - nowTime;
-                nowTime = newTime;
-
-                double benchTime = Glfw.Time;
-                timeAccumc += (float)deltaTime;
-                while ( timeAccumc > tickTime ) {
-                    timeAccumc -= tickTime;
-                    code.UpdateTick( tickTime );
-                }
-
-                code.UpdateRender( (float)deltaTime );
-                //Logger.Log( $"{ ( Glfw.Time - benchTime ) * 1000 }" );
-
-                Glfw.SwapBuffers( Engine.window );
-            }
-
-            Glfw.Terminate();
+            Engine engine = new Engine(1280, 720, "Huh ?");
+            engine.Run();
         }
 
         public static void ParseArgs( string[] args ) {

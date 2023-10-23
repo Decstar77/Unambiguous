@@ -1,11 +1,11 @@
 ﻿using FontStashSharp.Interfaces;
 using System.Drawing;
 
-using static OpenGL.GL;
+using OpenTK.Graphics.OpenGL4;
 
 namespace Game {
     public class FontTexture : IDisposable {
-        public uint texture = 0;
+        public int texture = 0;
         public int width = 0;
         public int height = 0;
         public int channels = 0;
@@ -17,31 +17,29 @@ namespace Game {
             this.height = height;
             this.channels = 4;
 
-            texture = glGenTexture();
-            glBindTexture( GL_TEXTURE_2D, texture );
-            unsafe { glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, null ); }
-            glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-            glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-            glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
-            glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+            texture = GL.GenTexture();
+            GL.BindTexture( TextureTarget.Texture2D, texture );
+            GL.TexImage2D( TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, width, height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, System.IntPtr.Zero );
+            GL.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge );
+            GL.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge );
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.LinearMipmapLinear);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+            GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
 
-            glGenerateMipmap( GL_TEXTURE_2D );
-
-            glBindTexture( GL_TEXTURE_2D, 0 );
+            GL.BindTexture( TextureTarget.Texture2D, 0 );
         }
 
         public void SetTextureData( Rectangle bounds, byte[] data ) {
-            glBindTexture( GL_TEXTURE_2D, (uint)texture );
-            unsafe {
-                fixed ( byte* ptr = data ) {
-                    glTexSubImage2D( GL_TEXTURE_2D, 0, bounds.X, bounds.Y, bounds.Width, bounds.Height, GL_RGBA, GL_UNSIGNED_BYTE, ptr );
-                }
-            }
-            glBindTexture( GL_TEXTURE_2D, 0 );
+            GL.BindTexture( TextureTarget.Texture2D, texture );
+            GL.TexSubImage2D( TextureTarget.Texture2D, 0, bounds.X, bounds.Y, bounds.Width, bounds.Height, PixelFormat.Rgba, PixelType.UnsignedByte, data );
+            GL.BindTexture( TextureTarget.Texture2D, 0 );
         }
 
         public void Dispose() {
-            glDeleteTexture( texture );
+            if ( texture != 0 ) {
+                GL.DeleteTexture( texture );
+                texture = 0;
+            }
         }
     }
 

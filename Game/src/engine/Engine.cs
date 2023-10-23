@@ -1,189 +1,9 @@
 ﻿using FontStashSharp;
-using GLFW;
-using OpenGL;
-using System;
-using System.Numerics;
-using static OpenGL.GL;
+using OpenTK.Mathematics;
+using OpenTK.Windowing.Desktop;
+using OpenTK.Graphics.OpenGL4;
 
 namespace Game {
-    public struct DrawTriangle {
-        public Vector2 a;
-        public Vector2 b;
-        public Vector2 c;
-    }
-
-    public static class Colors {
-        public static Vector4 WHITE = new Vector4(1, 1, 1, 1);
-    }
-
-    public enum DrawCommandType {
-        NONE = 0,
-        CIRCLE,
-        RECT,
-        SPRITE,
-        TEXT,
-        LINE,
-    };
-
-    public struct DrawCommand {
-        public DrawCommandType       type;
-        public Vector4               color;
-
-        public Vector2              c;
-        public float                r;
-
-        public Vector2              tl;
-        public Vector2              tr;
-        public Vector2              bl;
-        public Vector2              br;
-
-        public Vector2[]            verts;
-
-        public SpriteTexture?       spriteTexture;
-
-        public int                  gridLevel; // In the ISO grid
-        public Vector2              vanishingPoint;
-
-        public string               text;
-    }
-
-    public class DrawCommands {
-        public List<DrawCommand> commands = new List<DrawCommand>();
-
-        public void Clear() {
-            commands.Clear();
-        }
-
-        public void DrawCircle( Vector2 pos, float radius ) {
-            DrawCommand cmd = new DrawCommand();
-            cmd.type = DrawCommandType.CIRCLE;
-            cmd.color = Colors.WHITE;
-            cmd.c = pos;
-            cmd.r = radius;
-            commands.Add( cmd );
-        }
-
-        public void DrawRect( Vector2 bl, Vector2 tr ) {
-            DrawCommand cmd = new DrawCommand();
-            cmd.type = DrawCommandType.RECT;
-            cmd.color = Colors.WHITE;
-            cmd.bl = bl;
-            cmd.br = new Vector2( tr.X, bl.Y );
-            cmd.tr = tr;
-            cmd.tl = new Vector2( bl.X, tr.Y );
-            commands.Add( cmd );
-        }
-
-        public void DrawBox( BoxCollider box ) {
-            DrawCommand cmd = new DrawCommand();
-            cmd.type = DrawCommandType.RECT;
-            cmd.color = Colors.WHITE;
-            box.GetVerts( out cmd.bl, out cmd.br, out cmd.tr, out cmd.tl );
-            commands.Add( cmd );
-        }
-
-        public void DrawPolyCollider( PolyCollider polyCollider ) {
-            DrawCommand cmd = new DrawCommand();
-            cmd.type = DrawCommandType.LINE;
-            cmd.color = Colors.WHITE;
-            cmd.verts = polyCollider.verts;
-            commands.Add( cmd );
-        }
-
-        public void DrawText( string text, Vector2 p ) {
-            DrawCommand cmd = new DrawCommand();
-            cmd.type = DrawCommandType.TEXT;
-            cmd.color = Colors.WHITE;
-            cmd.text = text;
-            cmd.c = p;
-            commands.Add( cmd );
-        }
-
-        public void RenderDrawRect( Vector2 center, Vector2 dim, float rot ) {
-            DrawCommand cmd = new DrawCommand();
-            cmd.type = DrawCommandType.RECT;
-            cmd.color = Colors.WHITE;
-
-            cmd.bl = -dim / 2.0f;
-            cmd.tr = dim / 2.0f;
-            cmd.br = new Vector2( cmd.tr.X, cmd.bl.Y );
-            cmd.tl = new Vector2( cmd.bl.X, cmd.tr.Y );
-
-            //Mat2 rotationMatrix = new Matrix3x2 (MathF.Cos(rot), -MathF.Sin(rot), MathF.Sin(rot), MathF.Cos(rot));
-            Mat2 rotationMatrix = Mat2.Rotation( rot );
-
-            cmd.bl = rotationMatrix * cmd.bl;
-            cmd.tr = rotationMatrix * cmd.tr;
-            cmd.br = rotationMatrix * cmd.br;
-            cmd.tl = rotationMatrix * cmd.tl;
-
-            cmd.bl += center;
-            cmd.tr += center;
-            cmd.br += center;
-            cmd.tl += center;
-
-            commands.Add( cmd );
-        }
-
-        public void RenderDrawSprite( SpriteTexture texture, Vector2 center, float rot, Vector2 size ) {
-            DrawCommand cmd = new DrawCommand();
-            cmd.type = DrawCommandType.SPRITE;
-            cmd.color = Colors.WHITE;
-            cmd.spriteTexture = texture;
-
-            Vector2 dim = new Vector2(texture.width, texture.height) * size;
-            cmd.bl = -dim / 2.0f;
-            cmd.tr = dim / 2.0f;
-            cmd.br = new Vector2( cmd.tr.X, cmd.bl.Y );
-            cmd.tl = new Vector2( cmd.bl.X, cmd.tr.Y );
-
-            Mat2 rotationMatrix = Mat2.Rotation(rot);
-            cmd.bl = rotationMatrix * cmd.bl;
-            cmd.tr = rotationMatrix * cmd.tr;
-            cmd.br = rotationMatrix * cmd.br;
-            cmd.tl = rotationMatrix * cmd.tl;
-
-            cmd.bl += center;
-            cmd.tr += center;
-            cmd.br += center;
-            cmd.tl += center;
-
-            cmd.c = center;
-
-            commands.Add( cmd );
-        }
-
-        public void DrawSprite( SpriteTexture texture, Vector2 center, float rot, int level, Vector2 vanishingPoint ) {
-            DrawCommand cmd = new DrawCommand();
-            cmd.type = DrawCommandType.SPRITE;
-            cmd.color = Colors.WHITE;
-            cmd.spriteTexture = texture;
-
-            Vector2 dim = new Vector2(texture.width, texture.height);
-            cmd.bl = -dim / 2.0f;
-            cmd.tr = dim / 2.0f;
-            cmd.br = new Vector2( cmd.tr.X, cmd.bl.Y );
-            cmd.tl = new Vector2( cmd.bl.X, cmd.tr.Y );
-
-            Mat2 rotationMatrix = Mat2.Rotation(rot);
-            cmd.bl = rotationMatrix * cmd.bl;
-            cmd.tr = rotationMatrix * cmd.tr;
-            cmd.br = rotationMatrix * cmd.br;
-            cmd.tl = rotationMatrix * cmd.tl;
-
-            cmd.bl += center;
-            cmd.tr += center;
-            cmd.br += center;
-            cmd.tl += center;
-
-            cmd.c = center;
-
-            cmd.vanishingPoint = vanishingPoint;
-            cmd.gridLevel = level;
-
-            commands.Add( cmd );
-        }
-    }
 
     public struct Camera {
         public float    minWidth;
@@ -199,73 +19,33 @@ namespace Game {
         public Vector2  pos;
     }
 
-    public static class Engine {
+    public class Engine : GameWindow {
+        public static Engine self = null;
         public static EngineInput input = new EngineInput();
         public static float surfaceWidth = 0;
         public static float surfaceHeight = 0;
         public static Vector4 viewport = new Vector4( 0, 0, 0, 0 );
         public static Camera camera = new Camera();
-        public static Window window;
-        private static SizeCallback framebufferSizeCallback;
-        private static KeyCallback  keyCallback;
-        private static MouseButtonCallback mouseButtonCallback;
-        private static MouseCallback cursorPosCallback;
-        private static MouseCallback scrollCallback;
-        public static Matrix4x4 screenProjection;
-        public static Matrix4x4 cameraProjection;
+        public static Matrix4 screenProjection;
+        public static Matrix4 cameraProjection;
         public static ShaderProgram shapeProgram = null;
         public static VertexBuffer  shapeBuffer = null;
         public static ShaderProgram spriteProgram = null;
         public static VertexBuffer  spriteBuffer = null;
         public static FontRenderer fontRenderer = null;
-        public static IntPtr alDevice;
-        public static IntPtr alContext;
         public static SoLoud.Soloud soloud;
-        
-        public static void Init() {
-            Glfw.WindowHint( Hint.ClientApi, ClientApi.OpenGL );
-            Glfw.WindowHint( Hint.ContextVersionMajor, 3 );
-            Glfw.WindowHint( Hint.ContextVersionMinor, 3 );
-            Glfw.WindowHint( Hint.OpenglProfile, Profile.Core );
-            Glfw.WindowHint( Hint.Doublebuffer, true );
-            Glfw.WindowHint( Hint.Decorated, true );
-            Glfw.WindowHint( Hint.Resizable, true );
+        public static GameCode gameCode = null;
 
-            window = Glfw.CreateWindow(
-                GameSettings.Current.WindowWidth,
-                GameSettings.Current.WindowHeight,
-                "TItle",
-                GLFW.Monitor.None,
-                Window.None
-            );
+        public Engine( int width, int height, string title ) :
+            base( GameWindowSettings.Default, new NativeWindowSettings() { Size = (width, height), Title = title } ) {
+            self = this;
+        }
 
-            framebufferSizeCallback =   ( _, w, h ) =>                      OnFrameBufferSizeCallback( w, h );
-            keyCallback =               ( _, key, code, state, mods ) =>    OnKeyCallback( key, code, state, mods );
-            cursorPosCallback =         ( _, x, y ) =>                      OnCursorPosCallback( x, y );
-            scrollCallback =            ( _, x, y ) =>                      OnScrollCallback( x, y );
-            
-            Glfw.SetFramebufferSizeCallback( window, framebufferSizeCallback );
-            Glfw.SetKeyCallback( window, keyCallback );
-            Glfw.SetCursorPositionCallback( window, cursorPosCallback );
-            Glfw.SetScrollCallback( window, scrollCallback );
+        protected override void OnLoad() {
+            base.OnLoad();
 
-            // Center window
-            var screen = Glfw.PrimaryMonitor.WorkArea;
-            var x = (screen.Width - GameSettings.Current.WindowWidth ) / 2;
-            var y = (screen.Height - GameSettings.Current.WindowHeight ) / 2;
-            Glfw.SetWindowPosition( window, x, y );
-
-            Glfw.MakeContextCurrent( window );
-            Import( Glfw.GetProcAddress );
-
-            int width;
-            int height;
-            Glfw.GetFramebufferSize( window, out width, out height );
-
-            Glfw.SwapInterval( 1 );
-
-            surfaceWidth = (float)width;
-            surfaceHeight = (float)height;
+            surfaceWidth = (float)ClientSize.X;
+            surfaceHeight = (float)ClientSize.Y;
 
             camera.minWidth = 240;
             camera.minHeight = 135;
@@ -274,7 +54,7 @@ namespace Game {
             camera.width = camera.minWidth;
             camera.height = camera.minHeight;
             camera.zoom = 0.0f;
-            ResetSurface( width, height );
+            ResetSurface( surfaceWidth, surfaceHeight );
 
             InitShapeRendering();
             InitSpriteRendering();
@@ -288,11 +68,25 @@ namespace Game {
             //SoLoud.Wav wav = new SoLoud.Wav();
             //wav.Load( "C:/Projects/CS/Mage/Content/basic_death_1.wav" );
             //soloud.Play( wav );
+
+            gameCode = new GameCode();
+            gameCode.Init();
+        }
+
+        protected override void OnUpdateFrame( OpenTK.Windowing.Common.FrameEventArgs args ) {
+            base.OnUpdateFrame( args );
+            gameCode.UpdateTick( (float)args.Time );
+        }
+
+        protected override void OnRenderFrame( OpenTK.Windowing.Common.FrameEventArgs args ) {
+            base.OnRenderFrame( args );
+            gameCode.UpdateRender( (float)args.Time );
+            SwapBuffers();
         }
 
         public static void SubmitDrawCommands( DrawCommands commands ) {
-            glClearColor( 0.2f, 0.3f, 0.3f, 1.0f );
-            glClear( GL_COLOR_BUFFER_BIT );
+            GL.ClearColor( 0.2f, 0.3f, 0.3f, 1.0f );
+            GL.Clear( ClearBufferMask.ColorBufferBit );
 
             foreach ( DrawCommand cmd in commands.commands ) {
                 switch ( cmd.type ) {
@@ -302,10 +96,10 @@ namespace Game {
                         float x2 = cmd.c.X + cmd.r - camera.pos.X;
                         float y2 = cmd.c.Y + cmd.r - camera.pos.Y;
 
-                        Vector4 tl = Vector4.Transform( new Vector4( x1, y2, 0.0f, 1.0f ), cameraProjection );
-                        Vector4 bl = Vector4.Transform( new Vector4( x1, y1, 0.0f, 1.0f ), cameraProjection );
-                        Vector4 br = Vector4.Transform( new Vector4( x2, y1, 0.0f, 1.0f ), cameraProjection );
-                        Vector4 tr = Vector4.Transform( new Vector4( x2, y2, 0.0f, 1.0f ), cameraProjection );
+                        Vector4 tl = new Vector4( x1, y2, 0.0f, 1.0f ) * cameraProjection ;
+                        Vector4 bl = new Vector4( x1, y1, 0.0f, 1.0f ) * cameraProjection ;
+                        Vector4 br = new Vector4( x2, y1, 0.0f, 1.0f ) * cameraProjection ;
+                        Vector4 tr = new Vector4( x2, y2, 0.0f, 1.0f ) * cameraProjection ;
 
                         float[] vertices = new float[]{
                             tl.X, tl.Y,
@@ -336,10 +130,10 @@ namespace Game {
                         Vector4 br =  new Vector4( cmd.br.X - camera.pos.X, cmd.br.Y - camera.pos.Y, 0.0f, 0.0f );
                         Vector4 tr =  new Vector4( cmd.tr.X - camera.pos.X, cmd.tr.Y - camera.pos.Y, 0.0f, 0.0f );
 
-                        tl = Vector4.Transform( new Vector4( tl.X, tl.Y, 0.0f, 1.0f ), cameraProjection );
-                        bl = Vector4.Transform( new Vector4( bl.X, bl.Y, 0.0f, 1.0f ), cameraProjection );
-                        br = Vector4.Transform( new Vector4( br.X, br.Y, 0.0f, 1.0f ), cameraProjection );
-                        tr = Vector4.Transform( new Vector4( tr.X, tr.Y, 0.0f, 1.0f ), cameraProjection );
+                        tl = new Vector4( tl.X, tl.Y, 0.0f, 1.0f ) * cameraProjection;
+                        bl = new Vector4( bl.X, bl.Y, 0.0f, 1.0f ) * cameraProjection;
+                        br = new Vector4( br.X, br.Y, 0.0f, 1.0f ) * cameraProjection;
+                        tr = new Vector4( tr.X, tr.Y, 0.0f, 1.0f ) * cameraProjection;
 
                         float[] vertices = new float[]{
                             tl.X, tl.Y,
@@ -365,10 +159,10 @@ namespace Game {
                         Vector4 br =  new Vector4( cmd.br.X - camera.pos.X, cmd.br.Y - camera.pos.Y, 0.0f, 0.0f );
                         Vector4 tr =  new Vector4( cmd.tr.X - camera.pos.X, cmd.tr.Y - camera.pos.Y, 0.0f, 0.0f );
 
-                        tl = Vector4.Transform( new Vector4( tl.X, tl.Y, 0.0f, 1.0f ), cameraProjection );
-                        bl = Vector4.Transform( new Vector4( bl.X, bl.Y, 0.0f, 1.0f ), cameraProjection );
-                        br = Vector4.Transform( new Vector4( br.X, br.Y, 0.0f, 1.0f ), cameraProjection );
-                        tr = Vector4.Transform( new Vector4( tr.X, tr.Y, 0.0f, 1.0f ), cameraProjection );
+                        tl = new Vector4( tl.X, tl.Y, 0.0f, 1.0f ) * cameraProjection;
+                        bl = new Vector4( bl.X, bl.Y, 0.0f, 1.0f ) * cameraProjection;
+                        br = new Vector4( br.X, br.Y, 0.0f, 1.0f ) * cameraProjection;
+                        tr = new Vector4( tr.X, tr.Y, 0.0f, 1.0f ) * cameraProjection;
 
                         float[] vertices = new float[]{
                             tl.X, tl.Y, 0.0f ,0.0f,
@@ -389,7 +183,8 @@ namespace Game {
                     break;
                     case DrawCommandType.TEXT: {
                         DynamicSpriteFont font = Content.GetFont();
-                        font.DrawText( fontRenderer, cmd.text, cmd.c, FSColor.White );
+                        System.Numerics.Vector2 c = new System.Numerics.Vector2( cmd.c.X, cmd.c.Y );
+                        font.DrawText( fontRenderer, cmd.text, c, FSColor.White );
                     }
                     break;
                 }
@@ -447,8 +242,8 @@ namespace Game {
             Vector2 centerPoint1 = ScreenPosToWorldPos( new Vector2( surfaceWidth / 2.0f, surfaceHeight / 2.0f ) );
 
             camera.zoom = zoom;
-            camera.width = camera.minWidth + (camera.maxWidth - camera.minWidth) * camera.zoom;
-            camera.height = camera.minHeight + (camera.maxHeight - camera.minHeight) * camera.zoom;
+            camera.width = camera.minWidth + ( camera.maxWidth - camera.minWidth ) * camera.zoom;
+            camera.height = camera.minHeight + ( camera.maxHeight - camera.minHeight ) * camera.zoom;
             ResetSurface( surfaceWidth, surfaceHeight );
 
             Vector2 centerPoint2 = ScreenPosToWorldPos( new Vector2( surfaceWidth / 2.0f, surfaceHeight / 2.0f ) );
@@ -471,29 +266,6 @@ namespace Game {
             camera.pos = camera.pos + ( centerPoint1 - centerPoint2 );
         }
 
-        public static bool Poll() {
-            Array.Copy( input.keys, input.prevKeys, input.keys.Length );
-            bool c = !Glfw.WindowShouldClose(window);
-            if ( c == true ) {
-                input.prevMousePos = input.mousePos;
-                input.scrollX = 0;
-                input.scrollY = 0;
-
-                Glfw.PollEvents();
-
-                input.mouseDelta = input.mousePos - input.prevMousePos;
-
-                for ( int i = 0x20; i < 348; i++ ) {
-                    InputState state = Glfw.GetKey(window, (Keys)(i));
-                    input.keys[i] = state != InputState.Release;
-                }
-            }
-            return c;
-        }
-
-        public static void Close() {
-            Glfw.SetWindowShouldClose( window, true );
-        }
 
         private static void ResetSurface( float w, float h ) {
             float ratioX = w / camera.width;
@@ -506,23 +278,23 @@ namespace Game {
             int viewX = (int)( ( w - camera.width * ratio ) / 2 );
             int viewY = (int)( ( h - camera.height * ratio ) / 2 );
 
-            glViewport( viewX, viewY, viewWidth, viewHeight );
+            GL.Viewport( viewX, viewY, viewWidth, viewHeight );
 
             surfaceWidth = w;
             surfaceHeight = h;
             viewport = new Vector4( viewX, viewY, viewWidth, viewHeight );
-            cameraProjection = Matrix4x4.CreateOrthographicOffCenter( 0.0f, camera.width, 0.0f, camera.height, -1.0f, 1.0f );
-            screenProjection = Matrix4x4.CreateOrthographicOffCenter( 0.0f, w, h, 0.0f, -1.0f, 1.0f );
+            cameraProjection = Matrix4.CreateOrthographicOffCenter( 0.0f, camera.width, 0.0f, camera.height, -1.0f, 1.0f );
+            screenProjection = Matrix4.CreateOrthographicOffCenter( 0.0f, w, h, 0.0f, -1.0f, 1.0f );
         }
 
         public static void GLEnableAlphaBlending() {
-            glEnable( GL_BLEND );
-            glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+            GL.Enable( EnableCap.Blend );
+            GL.BlendFunc( BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha );
         }
 
         public static void GLEnablePreMultipliedAlphaBlending() {
-            glEnable( GL_BLEND );
-            glBlendFunc( GL_ONE, GL_ONE_MINUS_SRC_ALPHA );
+            GL.Enable( EnableCap.Blend );
+            GL.BlendFunc( BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha );
         }
 
         public static void InitShapeRendering() {
@@ -581,10 +353,8 @@ namespace Game {
             );
 
             shapeBuffer = new VertexBuffer( 2 * sizeof( float ), 6 * 2 * sizeof( float ), true, stride => {
-                unsafe {
-                    glEnableVertexAttribArray( 0 );
-                    glVertexAttribPointer( 0, 2, GL_FLOAT, false, stride, NULL );
-                }
+                GL.EnableVertexAttribArray( 0 );
+                GL.VertexAttribPointer( 0, 2, VertexAttribPointerType.Float, false, stride, 0 );
             } );
         }
 
@@ -614,21 +384,16 @@ namespace Game {
             );
 
             spriteBuffer = new VertexBuffer( 4 * sizeof( float ), 6 * 4 * sizeof( float ), true, stride => {
-                unsafe {
-                    glEnableVertexAttribArray( 0 );
-                    glVertexAttribPointer( 0, 2, GL_FLOAT, false, stride, NULL );
-                    glEnableVertexAttribArray( 1 );
-                    glVertexAttribPointer( 1, 2, GL_FLOAT, false, stride, (void*)( 2 * sizeof( float ) ) );
-                }
+                GL.EnableVertexAttribArray( 0 );
+                GL.VertexAttribPointer( 0, 2, VertexAttribPointerType.Float, false, stride, 0 );
+
+                GL.EnableVertexAttribArray( 1 );
+                GL.VertexAttribPointer( 1, 2, VertexAttribPointerType.Float, false, stride, 2 * sizeof( float ) );
             } );
         }
 
         public static void OnFrameBufferSizeCallback( int w, int h ) {
             ResetSurface( w, h );
-        }
-
-        public static void OnKeyCallback( Keys key, int scanCode, InputState state, ModifierKeys mods ) {
-
         }
 
         public static void OnCursorPosCallback( double x, double y ) {
@@ -642,12 +407,13 @@ namespace Game {
         }
 
         public static bool KeyIsJustDown( InputKey key ) {
-            return input.keys[(int)key] && !input.prevKeys[(int)key];
+            return self.KeyboardState.IsKeyPressed( (OpenTK.Windowing.GraphicsLibraryFramework.Keys)key );
         }
 
         public static bool KeyIsDown( InputKey key ) {
-            return input.keys[(int)key];
+            return self.KeyboardState.IsKeyDown( (OpenTK.Windowing.GraphicsLibraryFramework.Keys)key );
         }
+
 
     }
 }

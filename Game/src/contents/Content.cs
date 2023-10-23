@@ -1,6 +1,7 @@
 ﻿using FontStashSharp;
 
-namespace Game {
+namespace Game
+{
     public partial class Content {
         public static string BasePath = "C:/Projects/CS/Mage/Content/";
         
@@ -59,10 +60,11 @@ namespace Game {
                     }
                 }
 
-                spriteTexture = new SpriteTexture( width, height, image.NumChannels, new ReadOnlySpan<byte>( paddedData ) );
+                spriteTexture = new SpriteTexture( width, height, image.NumChannels, paddedData );
             }
             else {
-                spriteTexture = new SpriteTexture( width, height, image.NumChannels, image.Data );
+                byte[] data = image.Data.ToArray();
+                spriteTexture = new SpriteTexture( width, height, image.NumChannels, data );
             }
 
             image.Dispose();

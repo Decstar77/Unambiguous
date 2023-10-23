@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+﻿using OpenTK.Mathematics;
 
 namespace Game {
     public struct CircleBounds {
@@ -27,7 +27,7 @@ namespace Game {
         }
 
         public bool ContainsPoint( Vector2 p ) {
-            return ( p - center ).LengthSquared() < radius * radius;
+            return ( p - center ).LengthSquared < radius * radius;
         }
     }
 
@@ -41,7 +41,7 @@ namespace Game {
         }
 
         public float GetRaduis() {
-            return ( max - min ).Length() / 2;
+            return ( max - min ).Length / 2;
         }
 
         public Vector2 GetClosestPoint( Vector2 p ) {
@@ -141,14 +141,14 @@ namespace Game {
     public static class Intersections {
         public static bool CircleVsCircle( CircleBounds c1, CircleBounds c2 ) {
             // Do this with squared lengths to avoid a sqrt call
-            float distance = (c1.center - c2.center).LengthSquared();
+            float distance = (c1.center - c2.center).LengthSquared;
             float radiusSum = c1.radius + c2.radius;
             return distance <= radiusSum * radiusSum;
         }
 
         public static bool CircleVsRect( CircleBounds c, RectBounds r ) {
             Vector2 closest = r.GetClosestPoint(c.center);
-            return ( closest - c.center ).LengthSquared() < c.radius * c.radius;
+            return ( closest - c.center ).LengthSquared < c.radius * c.radius;
         }
 
         public static bool RectVsRect( RectBounds r1, RectBounds r2 ) {
