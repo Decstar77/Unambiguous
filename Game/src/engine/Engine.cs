@@ -33,7 +33,7 @@ namespace Game {
         public static ShaderProgram spriteProgram = null;
         public static VertexBuffer  spriteBuffer = null;
         public static FontRenderer fontRenderer = null;
-        public static SoLoud.Soloud soloud;
+        public static SoLoud.Soloud audioEngine;
         public static GameCode gameCode = null;
 
         public Engine( int width, int height, string title ) :
@@ -62,12 +62,9 @@ namespace Game {
             Content.LoadFonts();
             fontRenderer = new FontRenderer();
 
-            //soloud = new SoLoud.Soloud();
-            //soloud.Init( SoLoud.Soloud.CLIP_ROUNDOFF );
-            //soloud.SetGlobalVolume( 4 );
-            //SoLoud.Wav wav = new SoLoud.Wav();
-            //wav.Load( "C:/Projects/CS/Mage/Content/basic_death_1.wav" );
-            //soloud.Play( wav );
+            audioEngine = new SoLoud.Soloud();
+            audioEngine.Init( SoLoud.Soloud.CLIP_ROUNDOFF );
+            audioEngine.SetGlobalVolume( 4 );
 
             gameCode = new GameCode();
             gameCode.Init();
@@ -297,6 +294,10 @@ namespace Game {
             GL.BlendFunc( BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha );
         }
 
+        public static void AudioPlay( SoLoud.Wav wav ) {
+            audioEngine.Play( wav );
+        }
+
         public static void InitShapeRendering() {
             shapeProgram = new ShaderProgram( @"
                 #version 330 core
@@ -413,6 +414,11 @@ namespace Game {
         public static bool KeyIsDown( InputKey key ) {
             return self.KeyboardState.IsKeyDown( (OpenTK.Windowing.GraphicsLibraryFramework.Keys)key );
         }
+
+        public static bool MouseJustDown( int mouseButton ) {
+            return self.MouseState.IsButtonPressed( (OpenTK.Windowing.GraphicsLibraryFramework.MouseButton)( mouseButton - 1 ) );
+        }
+
 
 
     }

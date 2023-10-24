@@ -90,6 +90,12 @@ namespace Game
             DynamicSpriteFont font = fontSystem.GetFont( 32 );
             return font;
         }
-        
+
+        public static SoLoud.Wav LoadWav( string path ) {
+            string fullpath = BasePath + "sounds/" + path;
+            SoLoud.Wav wav = new SoLoud.Wav();
+            wav.Load( fullpath );
+            return wav;
+        }
     }
 }

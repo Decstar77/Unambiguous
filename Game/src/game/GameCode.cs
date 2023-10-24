@@ -22,6 +22,7 @@ namespace Game
         public SpriteTexture? gridTexture = null;
         public SpriteTexture? gridBlockTexture = null;
         public SpriteTexture? ballTexture = null;
+        public SoLoud.Wav sndHuh = null;
         public Entity[] entities = new Entity[100];
 
         public void Init() {
@@ -29,6 +30,7 @@ namespace Game
             gridTexture = Content.LoadSpriteTexture( "tile_test.png" );
             gridBlockTexture = Content.LoadSpriteTexture( "tile_blocker.png" );
             ballTexture = Content.LoadSpriteTexture( "ball_basic.png" );
+            sndHuh = Content.LoadWav( "huh.wav" );
             localPlayer.pos.X = 1;
 
             grid.FillLevel( 0, gridTexture );
@@ -65,6 +67,10 @@ namespace Game
             if ( dir != Vector2.Zero ) {
                 dir = Vector2.Normalize( dir );
                 localPlayer.pos += dir * spood * dt;
+            }
+
+            if ( Engine.MouseJustDown( 1 ) ) {
+                Engine.AudioPlay( sndHuh );
             }
 
             if ( Engine.input.scrollY != 0 ) {
