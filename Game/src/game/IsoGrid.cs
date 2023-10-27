@@ -9,7 +9,7 @@ namespace Game
         public int              zIndex;
         public Vector2          worldPos;
         public Vector2          worldVanishingPoint;
-        public PolyCollider     polyCollider;
+        public ConvexCollider   convexCollider;
         public SpriteTexture?   sprite;
     }
 
@@ -26,6 +26,12 @@ namespace Game
         public IsoTile[,,] tiles = null;
         public static Vector2 localVanishingPoint = new Vector2( 0, -9 );
         public static float IsoRotation = MathF.Atan( 1.0f / 2.0f ); // 26.565 deg
+        public static ConvexCollider tileCollider = new ConvexCollider(
+            new Vector2( -TILE_WIDTH_HALF, 0 - TILE_HEIGHT_HALF),
+            new Vector2( 0, TILE_HEIGHT_HALF - TILE_HEIGHT_HALF),
+            new Vector2( TILE_WIDTH_HALF, 0 - TILE_HEIGHT_HALF),
+            new Vector2( 0, -TILE_HEIGHT_HALF - TILE_HEIGHT_HALF)
+        );
 
         public IsoGrid( int wc, int hc, int lc ) {
             widthCount = wc;
@@ -40,6 +46,8 @@ namespace Game
                         tile.yIndex = y;
                         tile.zIndex = z;
                         tile.worldPos = MapPosToWorldPos( x, y, z );
+                        tile.convexCollider = tileCollider.Clone();
+                        tile.convexCollider.Translate( tile.worldPos );
                         tile.worldVanishingPoint = tile.worldPos + localVanishingPoint;
                         tiles[x, y, z] = tile;
                     }

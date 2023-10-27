@@ -1,13 +1,13 @@
 ﻿using ENet;
 
-namespace Game.src.net {
+namespace Game {
 
     public class GameClient {
-        static bool enetInitialized = false;
-        static Host client = new Host();
-        static Peer? server = null;
+        bool enetInitialized = false;
+        Host client = new Host();
+        Peer? server = null;
 
-        public static bool ConnectToServer( string strAddress, int port ) {
+        public bool ConnectToServer( string strAddress, int port ) {
             if ( enetInitialized == false && Library.Initialize() == false ) {
                 Console.WriteLine( "An error occurred while initializing ENet." );
                 return false;
@@ -36,7 +36,7 @@ namespace Game.src.net {
             }
         }
 
-        public static void NetoworkDisconnectFromServer() {
+        public void NetoworkDisconnectFromServer() {
             if ( server.HasValue && client.IsSet ) {
                 server.Value.Disconnect( 0 );
                 Event netEvent;
@@ -64,7 +64,7 @@ namespace Game.src.net {
             }
         }
 
-        public static bool NetworkPoll( byte[] packetData ) {
+        public bool NetworkPoll( byte[] packetData ) {
             if ( client.IsSet && server.HasValue ) {
                 Event netEvent;
                 if ( client.Service( 0, out netEvent ) >= 0 ) {
@@ -99,11 +99,11 @@ namespace Game.src.net {
             return false;
         }
 
-        public static bool NetworkIsConnected() {
+        public bool NetworkIsConnected() {
             return server.HasValue;
         }
 
-        public static void NetworkSendPacket( byte[] packetData, bool reliable ) {
+        public void NetworkSendPacket( byte[] packetData, bool reliable ) {
             if ( server.HasValue ) {
                 Packet netPacket = default;
                 netPacket.Create( packetData, reliable ? PacketFlags.Reliable : PacketFlags.None );
@@ -111,7 +111,7 @@ namespace Game.src.net {
             }
         }
 
-        public static int NetworkGetPing() {
+        public int NetworkGetPing() {
             if ( server.HasValue ) {
                 return (int)server.Value.RoundTripTime;
             }

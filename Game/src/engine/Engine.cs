@@ -5,20 +5,6 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace Game {
 
-    public struct Camera {
-        public float    minWidth;
-        public float    minHeight;
-
-        public float    maxWidth;
-        public float    maxHeight;
-
-        public float    width;
-        public float    height;
-        public float    zoom;
-
-        public Vector2  pos;
-    }
-
     public class Engine : GameWindow {
         public static Engine self = null;
         public static EngineInput input = new EngineInput();
@@ -34,7 +20,8 @@ namespace Game {
         public static VertexBuffer  spriteBuffer = null;
         public static FontRenderer fontRenderer = null;
         public static SoLoud.Soloud audioEngine;
-        public static GameCode gameCode = null;
+        public static GameClient gameClient = null;
+        public static GameModeGame gameCode = null;
 
         public Engine( int width, int height, string title ) :
             base( GameWindowSettings.Default, new NativeWindowSettings() { Size = (width, height), Title = title } ) {
@@ -66,17 +53,27 @@ namespace Game {
             audioEngine.Init( SoLoud.Soloud.CLIP_ROUNDOFF );
             audioEngine.SetGlobalVolume( 4 );
 
-            gameCode = new GameCode();
+            gameClient = new GameClient();
+
+            gameCode = new GameModeGame();
             gameCode.Init();
         }
 
         protected override void OnUpdateFrame( OpenTK.Windowing.Common.FrameEventArgs args ) {
             base.OnUpdateFrame( args );
+            if ( IsKeyDown( OpenTK.Windowing.GraphicsLibraryFramework.Keys.Escape ) ) {
+                Close();
+            }
+
             gameCode.UpdateTick( (float)args.Time );
         }
 
         protected override void OnRenderFrame( OpenTK.Windowing.Common.FrameEventArgs args ) {
             base.OnRenderFrame( args );
+            //if ( !IsFocused ) {
+            //    return;
+            //}
+
             gameCode.UpdateRender( (float)args.Time );
             SwapBuffers();
         }
@@ -182,6 +179,22 @@ namespace Game {
                         DynamicSpriteFont font = Content.GetFont();
                         System.Numerics.Vector2 c = new System.Numerics.Vector2( cmd.c.X, cmd.c.Y );
                         font.DrawText( fontRenderer, cmd.text, c, FSColor.White );
+                    }
+                    break;
+                    case DrawCommandType.TRIANGLES: {
+                        for ( int i = 0; i < cmd.verts.Length; i++ ) {
+                            cmd.verts[i] -= camera.pos;
+                            Vector4 r = new Vector4( cmd.verts[i].X, cmd.verts[i].Y, 0.0f, 1.0f ) * cameraProjection;
+                            cmd.verts[i] = new Vector2( r.X, r.Y );
+                        }
+
+                        GLEnableAlphaBlending();
+
+                        shapeProgram.Bind();
+                        shapeProgram.SetUniformInt( "mode", 0 );
+                        shapeProgram.SetUniformVec4( "color", cmd.color );
+                        shapeBuffer.UpdateVertexBuffer( cmd.verts );
+                        shapeBuffer.DrawVertexBuffer();
                     }
                     break;
                 }

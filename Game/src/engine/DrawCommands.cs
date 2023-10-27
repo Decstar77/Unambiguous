@@ -18,6 +18,7 @@ namespace Game {
         SPRITE,
         TEXT,
         LINE,
+        TRIANGLES,
     };
 
     public struct DrawCommand {
@@ -58,6 +59,10 @@ namespace Game {
             commands.Add( cmd );
         }
 
+        public void DrawCircle( CircleCollider circle ) {
+            DrawCircle( circle.center, circle.radius );
+        }
+
         public void DrawRect( Vector2 bl, Vector2 tr ) {
             DrawCommand cmd = new DrawCommand();
             cmd.type = DrawCommandType.RECT;
@@ -69,6 +74,10 @@ namespace Game {
             commands.Add( cmd );
         }
 
+        public void DrawRect( RectBounds rect ) {
+            DrawRect( rect.min, rect.max );
+        }
+        
         public void DrawBox( BoxCollider box ) {
             DrawCommand cmd = new DrawCommand();
             cmd.type = DrawCommandType.RECT;
@@ -77,11 +86,12 @@ namespace Game {
             commands.Add( cmd );
         }
 
-        public void DrawPolyCollider( PolyCollider polyCollider ) {
+        public void DEBUG_DrawConvexCollider( ConvexCollider polyCollider ) {
+            List<Vector2> verts = polyCollider.Triangulate();
             DrawCommand cmd = new DrawCommand();
-            cmd.type = DrawCommandType.LINE;
+            cmd.type = DrawCommandType.TRIANGLES;
             cmd.color = Colors.WHITE;
-            cmd.verts = polyCollider.verts;
+            cmd.verts = verts.ToArray();
             commands.Add( cmd );
         }
 

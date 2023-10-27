@@ -1,8 +1,7 @@
 ﻿
 using OpenTK.Mathematics;
 
-namespace Game
-{
+namespace Game {
 
     public enum EntityType {
         INVALID = 0,
@@ -14,18 +13,18 @@ namespace Game
         public Vector2 pos;
         public int gridLevel = 1;
         public SpriteTexture? sprite;
+        public CircleCollider circleCollider;
     }
 
-    public class GameCode {
+    public class GameModeGame : GameMode {
         public IsoGrid grid = new IsoGrid(10, 10, 2);
         public Entity localPlayer = new Entity();
         public SpriteTexture? gridTexture = null;
         public SpriteTexture? gridBlockTexture = null;
         public SpriteTexture? ballTexture = null;
         public SoLoud.Wav sndHuh = null;
-        public Entity[] entities = new Entity[100];
 
-        public void Init() {
+        public override void Init() {
             localPlayer.sprite = Content.LoadSpriteTexture( "unit_basic_man_single.png" );
             gridTexture = Content.LoadSpriteTexture( "tile_test.png" );
             gridBlockTexture = Content.LoadSpriteTexture( "tile_blocker.png" );
@@ -36,6 +35,7 @@ namespace Game
             grid.FillLevel( 0, gridTexture );
             grid.PlaceTile( 0, 0, 1, gridBlockTexture );
             grid.PlaceTile( 2, 3, 1, gridBlockTexture );
+            grid.PlaceTile( 3, 3, 1, gridBlockTexture );
             grid.PlaceTile( 7, 4, 1, gridBlockTexture );
 
             SpawnBall( grid.MapPosToWorldPos( 1, 5, 0 ) );
@@ -44,7 +44,7 @@ namespace Game
             SpawnBall( grid.MapPosToWorldPos( 7, 5, 0 ) );
         }
 
-        public void UpdateTick( float dt ) {
+        public override void UpdateTick( float dt ) {
             float spood = 25.0f;
 
             Vector2 dir = Vector2.Zero;
@@ -80,9 +80,23 @@ namespace Game
 
             Engine.camera.pos = Vector2.Lerp( Engine.camera.pos, localPlayer.pos - new Vector2( Engine.camera.width, Engine.camera.height ) / 2.0f, 0.1f );
 
+            Vector2 playerVanishingPoint = localPlayer.pos - new Vector2( 0, 12 ) ;
+            localPlayer.circleCollider = new CircleCollider( playerVanishingPoint, 3 );
+
+            for ( int x = 0; x < grid.widthCount; x++ ) {
+                for ( int y = grid.heightCount - 1; y >= 0; y-- ) {
+                    if ( grid.tiles[x, y, 1].sprite != null ) {
+                        Manifold m;
+                        if ( CollisionTests.CircleVsConvex( localPlayer.circleCollider, grid.tiles[x, y, 1].convexCollider, out m ) ) {
+                            localPlayer.pos -= m.normal * m.penetration;
+                        }
+                    }
+                }
+            }
+
         }
 
-        public void UpdateRender( float dt ) {
+        public override void UpdateRender( float dt ) {
             DrawCommands drawCommands = new DrawCommands();
 
             for ( int i = 0; i < entities.Length; i++ ) {
@@ -117,7 +131,23 @@ namespace Game
                 drawCommands.DrawCircle( playerVanishingPoint, 1 );
             }
 
-            
+            //for ( int x = 0; x < grid.widthCount; x++ ) {
+            //    for ( int y = grid.heightCount - 1; y >= 0; y-- ) {
+            //        if ( grid.tiles[x, y, 1].sprite != null ) {
+            //            drawCommands.DEBUG_DrawConvexCollider( grid.tiles[x, y, 1].convexCollider );
+            //        }
+            //    }
+            //}
+
+            //drawCommands.DrawCircle( localPlayer.circleCollider );
+
+            //ConvexCollider t = new ConvexCollider(
+            //    new Vector2(-10, -10),
+            //    new Vector2(-10, 10),
+            //    new Vector2(10, 10),
+            //    new Vector2(10, -10)
+            //);
+
 
             //drawCommands.DrawRect( new Vector2( -10, -10 ), new Vector2( 10, 10 ) );
             //drawCommands.DrawCircle( localPlayer.pos, 1 );
@@ -128,16 +158,8 @@ namespace Game
             Engine.SubmitDrawCommands( drawCommands );
         }
 
-        public Entity? SpawnEntity( EntityType type ) {
-            for ( int i = 0; i < entities.Length; i++ ) {
-                if ( entities[i] == null ) {
-                    entities[i] = new Entity();
-                    entities[i].type = type;
-                    return entities[i];
-                }
-            }
-
-            return null;
+        public override void Shutdown() {
+            
         }
 
         public Entity? SpawnBall( Vector2 pos ) {
@@ -152,5 +174,6 @@ namespace Game
             return ent;
         }
 
+       
     }
 }
