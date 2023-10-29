@@ -1,5 +1,5 @@
-﻿using OpenTK.Windowing.Desktop;
-using System.Text.Json;
+﻿using System.Text.Json;
+
 namespace Game {
 
     public class GameSettings {
@@ -8,15 +8,15 @@ namespace Game {
         public string ServerIp { get; set; } = "127.0.0.1";
         public int WindowWidth { get; set; } = 1280;
         public int WindowHeight { get; set; } = 720;
-        public int WindowPosX { get; set; } = -1;
-        public int WindowPosY { get; set; } = -1;
+        public int WindowPosX { get; set; } = 400;
+        public int WindowPosY { get; set; } = 200;
     }
 
     public class Game {
 
         public static void Main( string[] args ) {
             ParseArgs( args );
-            Engine engine = new Engine(1280, 720, "Huh ?");
+            Engine engine = new Engine( "Huh ?" );
             engine.Run();
         }
 

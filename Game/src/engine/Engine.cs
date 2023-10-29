@@ -1,35 +1,42 @@
 ﻿using FontStashSharp;
+using Game;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Desktop;
-using OpenTK.Graphics.OpenGL4;
 using SoLoud;
 
-namespace Game {
+namespace Game
+{
 
     public class Engine : GameWindow {
-        public static Engine self = null;
-        public static float surfaceWidth = 0;
-        public static float surfaceHeight = 0;
-        public static Vector4 viewport = new Vector4( 0, 0, 0, 0 );
+        private static Engine self = null;
+        private static float surfaceWidth = 0;
+        private static float surfaceHeight = 0;
+        private static Vector4 viewport = new Vector4( 0, 0, 0, 0 );
         public static Camera camera = new Camera();
         public static Matrix4 screenProjection;
         public static Matrix4 cameraProjection;
-        public static ShaderProgram shapeProgram = null;
-        public static VertexBuffer  shapeBuffer = null;
-        public static ShaderProgram spriteProgram = null;
-        public static VertexBuffer  spriteBuffer = null;
-        public static FontRenderer fontRenderer = null;
-        public static SoLoud.Soloud audioEngine;
-        public static GameClient gameClient = null;
-        public static byte[] gameClientPacketData = new byte[ 2048 ]; // TODO: Pre-allocate a buffer for receiving packets
-        public static GameMode gameMode = null;
-        public static GameMode nextGameMode = null;
-        
+        private static ShaderProgram shapeProgram = null;
+        private static VertexBuffer  shapeBuffer = null;
+        private static ShaderProgram spriteProgram = null;
+        private static VertexBuffer  spriteBuffer = null;
+        private static FontRenderer fontRenderer = null;
+        private static SoLoud.Soloud audioEngine;
+        private static GameClient gameClient = null;
+        private static byte[] gameClientPacketData = new byte[ 2048 ]; // TODO: Pre-allocate a buffer for receiving packets
+        private static GameMode gameMode = null;
+        private static GameMode nextGameMode = null;
+
 
         private static bool shouldClose = false;
 
-        public Engine( int width, int height, string title ) :
-            base( GameWindowSettings.Default, new NativeWindowSettings() { Size = (width, height), Title = title } ) {
+        public Engine( string title ) :
+            base( GameWindowSettings.Default, new NativeWindowSettings() { 
+                Size = new Vector2i( GameSettings.Current.WindowWidth, GameSettings.Current.WindowHeight ),
+                Title = title,
+                Location = new Vector2i( GameSettings.Current.WindowPosX, GameSettings.Current.WindowPosY ),
+                Vsync = OpenTK.Windowing.Common.VSyncMode.On
+            } ) {
             self = this;
         }
 
@@ -70,10 +77,11 @@ namespace Game {
             if ( IsKeyDown( OpenTK.Windowing.GraphicsLibraryFramework.Keys.Escape ) || shouldClose ) {
                 Close();
             }
-            
+
             if ( gameClient.NetworkIsConnected() ) {
+                int packetSize = 0;
                 Array.Clear( gameClientPacketData, 0, gameClientPacketData.Length );
-                while ( gameClient.NetworkPoll( gameClientPacketData ) == true ) {
+                while ( gameClient.NetworkPoll( gameClientPacketData, out packetSize ) == true ) {
 
                 }
             }
@@ -205,12 +213,12 @@ namespace Game {
                     case DrawCommandType.TEXT: {
                         DynamicSpriteFont font = Content.GetDefaultFont();
                         System.Numerics.Vector2 c = new System.Numerics.Vector2( cmd.c.X, cmd.c.Y );
-                        if (cmd.center) {
+                        if ( cmd.center ) {
                             System.Numerics.Vector2 d = font.MeasureString( cmd.text );
                             c = new System.Numerics.Vector2( cmd.c.X, cmd.c.Y );
                             c -= new System.Numerics.Vector2( d.X / 2.0f, d.Y / 2.0f );
-                        } 
-                        
+                        }
+
                         font.DrawText( fontRenderer, cmd.text, c, FSColor.White );
                     }
                     break;
@@ -449,15 +457,84 @@ namespace Game {
 
                 @"
                 #version 330 core
-                out vec4 result;
+                out vec4 FragColor;
                 in vec2 texCoord;
                 uniform sampler2D texture1;
-                void main()
-                {
-                    result = texture(texture1, texCoord);
-                    //result = vec4(texCoord.x, texCoord.y, 0.0, 1.0);
-                    //result = vec4(1,1,1, 1.0);
-                } "
+
+                vec2 uv_cstantos( vec2 uv, vec2 res ) {
+                    vec2 pixels = uv * res;
+
+                    // Updated to the final article
+                    vec2 alpha = 0.7 * fwidth(pixels);
+                    vec2 pixels_fract = fract(pixels);
+                    vec2 pixels_diff = clamp( .5 / alpha * pixels_fract, 0, .5 ) +
+                                        clamp( .5 / alpha * (pixels_fract - 1) + .5, 0, .5 );
+                    pixels = floor(pixels) + pixels_diff;
+                    return pixels / res;
+                }
+
+                vec2 uv_klems( vec2 uv, ivec2 texture_size ) {
+            
+                    vec2 pixels = uv * texture_size + 0.5;
+    
+                    // tweak fractional value of the texture coordinate
+                    vec2 fl = floor(pixels);
+                    vec2 fr = fract(pixels);
+                    vec2 aa = fwidth(pixels) * 0.75;
+
+                    fr = smoothstep( vec2(0.5) - aa, vec2(0.5) + aa, fr);
+    
+                    return (fl + fr - 0.5) / texture_size;
+                }
+
+                vec2 uv_iq( vec2 uv, ivec2 texture_size ) {
+                    vec2 pixel = uv * texture_size;
+
+                    vec2 seam = floor(pixel + 0.5);
+                    vec2 dudv = fwidth(pixel);
+                    pixel = seam + clamp( (pixel - seam) / dudv, -0.5, 0.5);
+    
+                    return pixel / texture_size;
+                }
+
+                vec2 uv_fat_pixel( vec2 uv, ivec2 texture_size ) {
+                    vec2 pixel = uv * texture_size;
+
+                    vec2 fat_pixel = floor(pixel) + 0.5;
+                    // subpixel aa algorithm (COMMENT OUT TO COMPARE WITH POINT SAMPLING)
+                    fat_pixel += 1 - clamp((1.0 - fract(pixel)) * 3, 0, 1);
+        
+                    return fat_pixel / texture_size;
+                }
+
+                vec2 uv_aa_smoothstep( vec2 uv, vec2 res, float width ) {
+                    uv = uv * res;
+                    vec2 uv_floor = floor(uv + 0.5);
+                    vec2 uv_fract = fract(uv + 0.5);
+                    vec2 uv_aa = fwidth(uv) * width * 0.5;
+                    uv_fract = smoothstep(
+                        vec2(0.5) - uv_aa,
+                        vec2(0.5) + uv_aa,
+                        uv_fract
+                        );
+    
+                    return (uv_floor + uv_fract - 0.5) / res;
+                }
+
+
+                void main() {
+                    ivec2 tSize = textureSize(texture1, 0);
+                    //vec2 uv = uv_cstantos(texCoord, vec2(tSize.x, tSize.y));
+                    //vec2 uv = uv_iq(texCoord, tSize);
+                    vec2 uv = uv_fat_pixel(texCoord, tSize);
+                    //vec2 uv = uv_aa_smoothstep(texCoord, vec2(tSize.x, tSize.y), 1);
+                    vec4 sampled = texture(texture1, uv);
+                    //vec4 sampled = texture(texture1, texCoord);
+                    //sampled.rgb *= sampled.a;
+                    //if (sampled.a < 1) discard;
+                    FragColor = sampled;
+                }
+                "
             );
 
             spriteBuffer = new VertexBuffer( 4 * sizeof( float ), 6 * 4 * sizeof( float ), true, stride => {
@@ -492,6 +569,11 @@ namespace Game {
         public static Vector2 MouseScreenPos() {
             return new Vector2( self.MouseState.X, self.MouseState.Y );
         }
+
+        public static float MouseScrollDelta() {
+            return self.MouseState.ScrollDelta.Y;
+        }
+        
         public static Vector2 GetSurfaceSize() {
             return new Vector2( surfaceWidth, surfaceHeight );
         }

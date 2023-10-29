@@ -2,6 +2,7 @@
 using SoLoud;
 
 namespace Game {
+
     public class GameModeMainMenu : GameMode {
         public UIMaster uiMaster = new UIMaster();
         private float buttonY = 0.35f;
@@ -19,20 +20,20 @@ namespace Game {
         }
 
         private void AddButton( string text, OnClickDelegate onClick ) {
-            UITextButton button = new UITextButton( text );
+            UITextButton button = new UITextButton(text);
             button.xConstraint = new UIConstraintRelative( 0.5f );
             button.yConstraint = new UIConstraintRelative( buttonY );
             button.widthConstraint = new UIConstraintRelative( 0.15f );
             button.heightConstraint = new UIConstraintAspect( 0.53f, button.widthConstraint );
             button.onClick = onClick;
-            button.onHover = ( Vector2 p ) => Engine.AudioPlay( sndButtonHover );
+            button.onHover = ( p ) => Engine.AudioPlay( sndButtonHover );
             uiMaster.elements.Add( button );
             buttonY += buttonYStep;
         }
 
         public override void Shutdown() {
         }
-        
+
         public override void UpdateTick( float dt ) {
         }
 

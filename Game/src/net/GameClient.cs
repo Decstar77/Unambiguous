@@ -64,7 +64,7 @@ namespace Game {
             }
         }
 
-        public bool NetworkPoll( byte[] packetData ) {
+        public bool NetworkPoll( byte[] packetData, out int packetSize ) { 
             if ( client.IsSet && server.HasValue ) {
                 Event netEvent;
                 if ( client.Service( 0, out netEvent ) >= 0 ) {
@@ -90,12 +90,14 @@ namespace Game {
                         case EventType.Receive: {
                             //Console.WriteLine("Packet received from server - Channel ID: " + netEvent.ChannelID + ", Data length: " + netEvent.Packet.Length);
                             netEvent.Packet.CopyTo( packetData );
+                            packetSize = netEvent.Packet.Length;
                             return true;
                         }
                     }
                 }
             }
 
+            packetSize = 0;
             return false;
         }
 

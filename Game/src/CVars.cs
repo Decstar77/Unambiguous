@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Game {
+﻿namespace Game {
 
     public class BoolCVar {
         public bool Value { get; set; }
