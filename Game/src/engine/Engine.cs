@@ -23,7 +23,7 @@ namespace Game {
         public static GameClient gameClient = null;
         public static byte[] gameClientPacketData = new byte[ 2048 ]; // TODO: Pre-allocate a buffer for receiving packets
         public static GameMode gameMode = null;
-        public static GameMode? nextGameMode = null;
+        public static GameMode nextGameMode = null;
         
 
         private static bool shouldClose = false;
@@ -477,7 +477,7 @@ namespace Game {
             return self.KeyboardState.IsKeyDown( (OpenTK.Windowing.GraphicsLibraryFramework.Keys)key );
         }
 
-        public static bool MouseDown( int mouseButton ) {
+        public static new bool MouseDown( int mouseButton ) {
             return self.MouseState.IsButtonDown( (OpenTK.Windowing.GraphicsLibraryFramework.MouseButton)( mouseButton - 1 ) );
         }
 

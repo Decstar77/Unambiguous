@@ -1,5 +1,6 @@
 ﻿using FontStashSharp.Interfaces;
 using OpenTK.Graphics.OpenGL4;
+using System.Diagnostics;
 
 namespace Game
 {
@@ -80,6 +81,9 @@ namespace Game
             };
 
             Engine.GLEnablePreMultipliedAlphaBlending();
+
+            Debug.Assert( fontProgram != null );
+            Debug.Assert( fontBuffer != null );
 
             fontProgram.Bind();
             fontProgram.SetUniformMat4( "MatrixTransform", ref Engine.screenProjection );

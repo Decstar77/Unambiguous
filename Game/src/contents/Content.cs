@@ -12,7 +12,7 @@ namespace Game
             return BasePath + path;
         }
 
-        public static SpriteTexture? LoadSpriteTexture( string textureId ) {
+        public static SpriteTexture LoadSpriteTexture( string textureId ) {
             string fullpath = BasePath + "sprites/" +textureId;
             byte[] fileData = File.ReadAllBytes( fullpath );
             if ( fileData == null || fileData.Length == 0 ) {
@@ -94,7 +94,7 @@ namespace Game
 
         private static Dictionary<string, SoloudObject> sounds = new Dictionary<string, SoloudObject>();
         public static SoloudObject LoadWav( string path ) {
-            sounds.TryGetValue( path, out SoloudObject? sound );
+            sounds.TryGetValue( path, out SoloudObject sound );
             if ( sound != null ) {
                 return sound;
             }

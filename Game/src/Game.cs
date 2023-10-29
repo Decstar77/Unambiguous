@@ -26,7 +26,7 @@ namespace Game {
                     if ( i + 1 < args.Length ) {
                         string settingsText = File.ReadAllText(args[i + 1]);
                         if ( settingsText.Length != 0 ) {
-                            GameSettings? newSettings = JsonSerializer.Deserialize<GameSettings>(settingsText);
+                            GameSettings newSettings = JsonSerializer.Deserialize<GameSettings>(settingsText);
                             if ( newSettings != null ) {
                                 GameSettings.Current = newSettings;
                             }

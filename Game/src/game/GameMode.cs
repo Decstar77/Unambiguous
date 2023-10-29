@@ -7,7 +7,7 @@
         public abstract void UpdateRender( float dt );
         public abstract void Shutdown();
 
-        public Entity? SpawnEntity( EntityType type ) {
+        public Entity SpawnEntity( EntityType type ) {
             for ( int i = 0; i < entities.Length; i++ ) {
                 if ( entities[i] == null ) {
                     entities[i] = new Entity();

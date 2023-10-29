@@ -10,7 +10,7 @@ namespace Game
         public Vector2          worldPos;
         public Vector2          worldVanishingPoint;
         public ConvexCollider   convexCollider;
-        public SpriteTexture?   sprite;
+        public SpriteTexture    sprite;
     }
 
     public class IsoGrid {
@@ -55,7 +55,7 @@ namespace Game
             }
         }
 
-        public void FillLevel( int z, SpriteTexture? sprite ) {
+        public void FillLevel( int z, SpriteTexture sprite ) {
             for ( int x = 0; x < widthCount; x++ ) {
                 for ( int y = 0; y < heightCount; y++ ) {
                     tiles[x, y, z].sprite = sprite;
@@ -63,7 +63,7 @@ namespace Game
             }
         }
 
-        public void PlaceTile( int x, int y, int z, SpriteTexture? sprite ) {
+        public void PlaceTile( int x, int y, int z, SpriteTexture sprite ) {
             tiles[x, y, z].sprite = sprite;
         }
 

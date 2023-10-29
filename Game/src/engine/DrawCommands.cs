@@ -60,7 +60,7 @@ namespace Game {
 
         public Vector2[]            verts;
 
-        public SpriteTexture?       spriteTexture;
+        public SpriteTexture       spriteTexture;
 
         public int                  gridLevel; // In the ISO grid
         public Vector2              vanishingPoint;

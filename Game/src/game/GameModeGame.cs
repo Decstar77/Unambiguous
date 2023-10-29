@@ -13,16 +13,16 @@ namespace Game {
         public EntityType type;
         public Vector2 pos;
         public int gridLevel = 1;
-        public SpriteTexture? sprite;
+        public SpriteTexture sprite;
         public CircleCollider circleCollider;
     }
 
     public class GameModeGame : GameMode {
         public IsoGrid grid = new IsoGrid(10, 10, 2);
         public Entity localPlayer = new Entity();
-        public SpriteTexture? gridTexture = null;
-        public SpriteTexture? gridBlockTexture = null;
-        public SpriteTexture? ballTexture = null;
+        public SpriteTexture gridTexture = null;
+        public SpriteTexture gridBlockTexture = null;
+        public SpriteTexture ballTexture = null;
         public SoloudObject sndHuh = null;
         public UIMaster uiMaster = new UIMaster();
 
@@ -166,8 +166,8 @@ namespace Game {
             
         }
 
-        public Entity? SpawnBall( Vector2 pos ) {
-            Entity? ent = SpawnEntity( EntityType.BALL );
+        public Entity SpawnBall( Vector2 pos ) {
+            Entity ent = SpawnEntity( EntityType.BALL );
             if ( ent == null ) {
                 return null;
             }

@@ -6,8 +6,8 @@ namespace Game {
         public UIMaster uiMaster = new UIMaster();
         private float buttonY = 0.45f;
         private float buttonYStep = 0.1f;
-        private SoloudObject sndButtonHover;
-        private SoloudObject sndButtonClick;
+        private SoloudObject sndButtonHover = null;
+        private SoloudObject sndButtonClick = null;
 
         public override void Init() {
             sndButtonHover = Content.LoadWav( "sfxd03.wav" );

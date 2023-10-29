@@ -59,8 +59,8 @@ namespace Game {
         public UIConstraint widthConstraint = new UIConstraintFixed( 0 );
         public UIConstraint heightConstraint = new UIConstraintFixed( 0 );
 
-        public OnClickDelegate? onClick = null;
-        public OnHoverDelegate? onHover = null;
+        public OnClickDelegate onClick = null;
+        public OnHoverDelegate onHover = null;
 
         public abstract void Draw( DrawCommands drawCommands, RectBounds rect );
         public abstract void ComputeSize( Vector2 parentSize );
