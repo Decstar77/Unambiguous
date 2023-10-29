@@ -42,7 +42,7 @@ namespace Server {
 
             Peer? holdingPeer = null;
             List<GameSession> gameSessions = new List<GameSession>();
-
+            int packetLogCounter = 0;
             while( !Console.KeyAvailable ) {
                 bool polled = false;
 
@@ -99,7 +99,10 @@ namespace Server {
 
                         case EventType.Receive: {
                             GameSession? session = gameSessions.FirstOrDefault(s => s.peers.Any(p => p.peer.ID == netEvent.Peer.ID));
-
+                            packetLogCounter++;
+                            if ( packetLogCounter % 100 == 0 ) {
+                                Console.WriteLine( "Packet received from peer ID " + netEvent.Peer.ID );
+                            }
                             byte[] buffer = new byte[netEvent.Packet.Length];
                             netEvent.Packet.CopyTo( buffer );
 

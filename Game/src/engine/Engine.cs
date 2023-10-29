@@ -4,9 +4,9 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Desktop;
 using SoLoud;
+using System.Diagnostics;
 
-namespace Game
-{
+namespace Game {
 
     public class Engine : GameWindow {
         private static Engine self = null;
@@ -26,12 +26,12 @@ namespace Game
         private static byte[] gameClientPacketData = new byte[ 2048 ]; // TODO: Pre-allocate a buffer for receiving packets
         private static GameMode gameMode = null;
         private static GameMode nextGameMode = null;
-
+        private static GameModeInitArgs nextGameModeArgs = new GameModeInitArgs();
 
         private static bool shouldClose = false;
 
         public Engine( string title ) :
-            base( GameWindowSettings.Default, new NativeWindowSettings() { 
+            base( GameWindowSettings.Default, new NativeWindowSettings() {
                 Size = new Vector2i( GameSettings.Current.WindowWidth, GameSettings.Current.WindowHeight ),
                 Title = title,
                 Location = new Vector2i( GameSettings.Current.WindowPosX, GameSettings.Current.WindowPosY ),
@@ -68,10 +68,12 @@ namespace Game
             gameClient = new GameClient();
 
             gameMode = new GameModeMainMenu();
-            gameMode.Init();
+            gameMode.Init( new GameModeInitArgs() );
         }
 
         protected override void OnUpdateFrame( OpenTK.Windowing.Common.FrameEventArgs args ) {
+            Stopwatch stopWatch = Stopwatch.StartNew();
+
             base.OnUpdateFrame( args );
 
             if ( IsKeyDown( OpenTK.Windowing.GraphicsLibraryFramework.Keys.Escape ) || shouldClose ) {
@@ -82,28 +84,37 @@ namespace Game
                 int packetSize = 0;
                 Array.Clear( gameClientPacketData, 0, gameClientPacketData.Length );
                 while ( gameClient.NetworkPoll( gameClientPacketData, out packetSize ) == true ) {
-
+                    gameMode.NetworkPacketReceived( gameClientPacketData, packetSize );
                 }
             }
 
             if ( nextGameMode != null ) {
                 gameMode.Shutdown();
                 gameMode = nextGameMode;
-                gameMode.Init();
+                gameMode.Init( nextGameModeArgs );
                 nextGameMode = null;
                 return; // skip update tick for this frame
             }
 
             gameMode.UpdateTick( (float)args.Time );
+
+            //Logger.Log( $"Update Took {stopWatch.Elapsed.TotalMilliseconds} " );
+            stopWatch.Stop();
         }
 
         protected override void OnRenderFrame( OpenTK.Windowing.Common.FrameEventArgs args ) {
+            Stopwatch stopWatch = Stopwatch.StartNew();
+
             base.OnRenderFrame( args );
             //if ( !IsFocused ) {
             //    return;
             //}
 
             gameMode.UpdateRender( (float)args.Time );
+
+            //Logger.Log( $"Render Took {stopWatch.Elapsed.TotalMilliseconds} " );
+            stopWatch.Stop();
+
             SwapBuffers();
         }
 
@@ -569,11 +580,19 @@ namespace Game
         public static Vector2 MouseScreenPos() {
             return new Vector2( self.MouseState.X, self.MouseState.Y );
         }
+        
+        public static Vector2 MouseScreenPosPrev() {
+            return new Vector2( self.MouseState.PreviousX, self.MouseState.PreviousY );
+        }
+
+        public static Vector2 MouseScreenDelta() {
+            return new Vector2( self.MouseState.Delta.X, self.MouseState.Delta.Y );
+        }
 
         public static float MouseScrollDelta() {
             return self.MouseState.ScrollDelta.Y;
         }
-        
+
         public static Vector2 GetSurfaceSize() {
             return new Vector2( surfaceWidth, surfaceHeight );
         }
@@ -582,8 +601,9 @@ namespace Game
             shouldClose = true;
         }
 
-        public static void MoveToGameMode( GameMode gameMode ) {
+        public static void MoveToGameMode( GameMode gameMode, GameModeInitArgs args ) {
             nextGameMode = gameMode;
+            nextGameModeArgs = args;
         }
 
         public static bool NetworkConnectToServer() {

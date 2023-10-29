@@ -10,11 +10,17 @@ namespace Game {
         private SoloudObject sndButtonHover;
         private SoloudObject sndButtonClick;
 
-        public override void Init() {
+        public override void Init( GameModeInitArgs args ) {
             sndButtonHover = Content.LoadWav( "sfxd03.wav" );
             sndButtonClick = Content.LoadWav( "sfxd05.wav" );
-            AddButton( "Single Pringle", () => { Engine.AudioPlay( sndButtonClick ); Engine.MoveToGameMode( new GameModeGame() ); } );
-            AddButton( "Many Penny", () => { Engine.AudioPlay( sndButtonClick ); Engine.MoveToGameMode( new GameModeMutliplayerMenu() ); } );
+            AddButton( "Single Pringle", () => {
+                Engine.AudioPlay( sndButtonClick );
+                Engine.MoveToGameMode( new GameModeGame(), new GameModeInitArgs() );
+            } );
+            AddButton( "Many Penny", () => { 
+                Engine.AudioPlay( sndButtonClick ); 
+                Engine.MoveToGameMode( new GameModeMutliplayerMenu(), new GameModeInitArgs() ); 
+            } );
             AddButton( "Options", () => { Engine.AudioPlay( sndButtonClick ); } );
             AddButton( "Quit", () => Engine.QuitGame() );
         }

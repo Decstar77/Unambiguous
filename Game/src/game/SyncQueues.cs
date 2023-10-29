@@ -55,8 +55,8 @@ namespace Game
             return slidingWindowWidth;
         }
 
-        public static int turnRate = 24; // Per second
-        public static float turnRateMS = 1 / (float)turnRate;
+        public static int TurnRate = 24; // Per second
+        public static float TurnRateMS = 1 / (float)TurnRate;
 
         int slidingWindowWidth = 4;
         Queue<MapTurn> player1Turns = new Queue<MapTurn>( 10 );
