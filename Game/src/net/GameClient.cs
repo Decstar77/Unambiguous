@@ -36,7 +36,7 @@ namespace Game {
             }
         }
 
-        public void NetoworkDisconnectFromServer() {
+        public void DisconnectFromServer() {
             if ( server.HasValue && client.IsSet ) {
                 server.Value.Disconnect( 0 );
                 Event netEvent;

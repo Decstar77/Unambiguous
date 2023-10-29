@@ -1,4 +1,5 @@
 ﻿using FontStashSharp;
+using SoLoud;
 
 namespace Game
 {
@@ -86,15 +87,24 @@ namespace Game
             fontSystem.AddFont( File.ReadAllBytes( ResolvePath( "fonts/DroidSans.ttf" ) ) );
         }
 
-        public static DynamicSpriteFont GetFont() {
+        public static DynamicSpriteFont GetDefaultFont() {
             DynamicSpriteFont font = fontSystem.GetFont( 32 );
             return font;
         }
 
-        public static SoLoud.Wav LoadWav( string path ) {
+        private static Dictionary<string, SoloudObject> sounds = new Dictionary<string, SoloudObject>();
+        public static SoloudObject LoadWav( string path ) {
+            sounds.TryGetValue( path, out SoloudObject? sound );
+            if ( sound != null ) {
+                return sound;
+            }
+
             string fullpath = BasePath + "sounds/" + path;
             SoLoud.Wav wav = new SoLoud.Wav();
             wav.Load( fullpath );
+
+            sounds.Add( path, wav );
+
             return wav;
         }
     }

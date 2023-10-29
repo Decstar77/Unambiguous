@@ -1,5 +1,6 @@
 ﻿
 using OpenTK.Mathematics;
+using SoLoud;
 
 namespace Game {
 
@@ -22,7 +23,8 @@ namespace Game {
         public SpriteTexture? gridTexture = null;
         public SpriteTexture? gridBlockTexture = null;
         public SpriteTexture? ballTexture = null;
-        public SoLoud.Wav sndHuh = null;
+        public SoloudObject sndHuh = null;
+        public UIMaster uiMaster = new UIMaster();
 
         public override void Init() {
             localPlayer.sprite = Content.LoadSpriteTexture( "unit_basic_man_single.png" );
@@ -73,10 +75,10 @@ namespace Game {
                 Engine.AudioPlay( sndHuh );
             }
 
-            if ( Engine.input.scrollY != 0 ) {
-                float zoom = Engine.camera.zoom + Engine.input.scrollY * -0.1f;
-                //Engine.CameraSetZoomPoint( zoom, Engine.input.mousePos );
-            }
+            //if ( Engine.input.scrollY != 0 ) {
+            //    float zoom = Engine.camera.zoom + Engine.input.scrollY * -0.1f;
+            //    //Engine.CameraSetZoomPoint( zoom, Engine.input.mousePos );
+            //}
 
             Engine.camera.pos = Vector2.Lerp( Engine.camera.pos, localPlayer.pos - new Vector2( Engine.camera.width, Engine.camera.height ) / 2.0f, 0.1f );
 
@@ -153,7 +155,9 @@ namespace Game {
             //drawCommands.DrawCircle( localPlayer.pos, 1 );
 
             //drawCommands.DrawText($"{Engine.camera.pos}", new Vector2(0, 0));
-            drawCommands.DrawText( $"{Engine.input.mousePos}", new Vector2( 0, 0 ) );
+            //drawCommands.DrawText( $"{Engine.input.mousePos}", new Vector2( 0, 0 ) );
+
+            uiMaster.UpdateAndRender( drawCommands );
 
             Engine.SubmitDrawCommands( drawCommands );
         }

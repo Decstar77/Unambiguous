@@ -2,12 +2,12 @@
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Graphics.OpenGL4;
+using SoLoud;
 
 namespace Game {
 
     public class Engine : GameWindow {
         public static Engine self = null;
-        public static EngineInput input = new EngineInput();
         public static float surfaceWidth = 0;
         public static float surfaceHeight = 0;
         public static Vector4 viewport = new Vector4( 0, 0, 0, 0 );
@@ -21,7 +21,12 @@ namespace Game {
         public static FontRenderer fontRenderer = null;
         public static SoLoud.Soloud audioEngine;
         public static GameClient gameClient = null;
-        public static GameModeGame gameCode = null;
+        public static byte[] gameClientPacketData = new byte[ 2048 ]; // TODO: Pre-allocate a buffer for receiving packets
+        public static GameMode gameMode = null;
+        public static GameMode? nextGameMode = null;
+        
+
+        private static bool shouldClose = false;
 
         public Engine( int width, int height, string title ) :
             base( GameWindowSettings.Default, new NativeWindowSettings() { Size = (width, height), Title = title } ) {
@@ -55,17 +60,33 @@ namespace Game {
 
             gameClient = new GameClient();
 
-            gameCode = new GameModeGame();
-            gameCode.Init();
+            gameMode = new GameModeMainMenu();
+            gameMode.Init();
         }
 
         protected override void OnUpdateFrame( OpenTK.Windowing.Common.FrameEventArgs args ) {
             base.OnUpdateFrame( args );
-            if ( IsKeyDown( OpenTK.Windowing.GraphicsLibraryFramework.Keys.Escape ) ) {
+
+            if ( IsKeyDown( OpenTK.Windowing.GraphicsLibraryFramework.Keys.Escape ) || shouldClose ) {
                 Close();
             }
+            
+            if ( gameClient.NetworkIsConnected() ) {
+                Array.Clear( gameClientPacketData, 0, gameClientPacketData.Length );
+                while ( gameClient.NetworkPoll( gameClientPacketData ) == true ) {
 
-            gameCode.UpdateTick( (float)args.Time );
+                }
+            }
+
+            if ( nextGameMode != null ) {
+                gameMode.Shutdown();
+                gameMode = nextGameMode;
+                gameMode.Init();
+                nextGameMode = null;
+                return; // skip update tick for this frame
+            }
+
+            gameMode.UpdateTick( (float)args.Time );
         }
 
         protected override void OnRenderFrame( OpenTK.Windowing.Common.FrameEventArgs args ) {
@@ -74,12 +95,18 @@ namespace Game {
             //    return;
             //}
 
-            gameCode.UpdateRender( (float)args.Time );
+            gameMode.UpdateRender( (float)args.Time );
             SwapBuffers();
         }
 
+        protected override void OnResize( OpenTK.Windowing.Common.ResizeEventArgs e ) {
+            int w = e.Width;
+            int h = e.Height;
+            ResetSurface( w, h );
+        }
+
         public static void SubmitDrawCommands( DrawCommands commands ) {
-            GL.ClearColor( 0.2f, 0.3f, 0.3f, 1.0f );
+            GL.ClearColor( Colors.SILVER.X, Colors.SILVER.Y, Colors.SILVER.Z, 1.0f );
             GL.Clear( ClearBufferMask.ColorBufferBit );
 
             foreach ( DrawCommand cmd in commands.commands ) {
@@ -176,8 +203,14 @@ namespace Game {
                     }
                     break;
                     case DrawCommandType.TEXT: {
-                        DynamicSpriteFont font = Content.GetFont();
+                        DynamicSpriteFont font = Content.GetDefaultFont();
                         System.Numerics.Vector2 c = new System.Numerics.Vector2( cmd.c.X, cmd.c.Y );
+                        if (cmd.center) {
+                            System.Numerics.Vector2 d = font.MeasureString( cmd.text );
+                            c = new System.Numerics.Vector2( cmd.c.X, cmd.c.Y );
+                            c -= new System.Numerics.Vector2( d.X / 2.0f, d.Y / 2.0f );
+                        } 
+                        
                         font.DrawText( fontRenderer, cmd.text, c, FSColor.White );
                     }
                     break;
@@ -194,6 +227,36 @@ namespace Game {
                         shapeProgram.SetUniformInt( "mode", 0 );
                         shapeProgram.SetUniformVec4( "color", cmd.color );
                         shapeBuffer.UpdateVertexBuffer( cmd.verts );
+                        shapeBuffer.DrawVertexBuffer();
+                    }
+                    break;
+
+                    case DrawCommandType.SCREEN_RECT: {
+                        Vector4 tl =  new Vector4( cmd.tl.X, cmd.tl.Y, 0.0f, 0.0f );
+                        Vector4 bl =  new Vector4( cmd.bl.X, cmd.bl.Y, 0.0f, 0.0f );
+                        Vector4 br =  new Vector4( cmd.br.X, cmd.br.Y, 0.0f, 0.0f );
+                        Vector4 tr =  new Vector4( cmd.tr.X, cmd.tr.Y, 0.0f, 0.0f );
+
+                        tl = new Vector4( tl.X, tl.Y, 0.0f, 1.0f ) * screenProjection;
+                        bl = new Vector4( bl.X, bl.Y, 0.0f, 1.0f ) * screenProjection;
+                        br = new Vector4( br.X, br.Y, 0.0f, 1.0f ) * screenProjection;
+                        tr = new Vector4( tr.X, tr.Y, 0.0f, 1.0f ) * screenProjection;
+
+                        float[] vertices = new float[]{
+                            tl.X, tl.Y,
+                            bl.X, bl.Y,
+                            br.X, br.Y,
+                            tl.X, tl.Y,
+                            br.X, br.Y,
+                            tr.X, tr.Y
+                        };
+
+                        GLEnableAlphaBlending();
+
+                        shapeProgram.Bind();
+                        shapeProgram.SetUniformInt( "mode", 0 );
+                        shapeProgram.SetUniformVec4( "color", cmd.color );
+                        shapeBuffer.UpdateVertexBuffer( vertices );
                         shapeBuffer.DrawVertexBuffer();
                     }
                     break;
@@ -307,7 +370,7 @@ namespace Game {
             GL.BlendFunc( BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha );
         }
 
-        public static void AudioPlay( SoLoud.Wav wav ) {
+        public static void AudioPlay( SoloudObject wav ) {
             audioEngine.Play( wav );
         }
 
@@ -406,20 +469,6 @@ namespace Game {
             } );
         }
 
-        public static void OnFrameBufferSizeCallback( int w, int h ) {
-            ResetSurface( w, h );
-        }
-
-        public static void OnCursorPosCallback( double x, double y ) {
-            input.mousePos.X = (float)x;
-            input.mousePos.Y = (float)y;
-        }
-
-        public static void OnScrollCallback( double x, double y ) {
-            input.scrollX = (float)x;
-            input.scrollY = (float)y;
-        }
-
         public static bool KeyIsJustDown( InputKey key ) {
             return self.KeyboardState.IsKeyPressed( (OpenTK.Windowing.GraphicsLibraryFramework.Keys)key );
         }
@@ -428,11 +477,43 @@ namespace Game {
             return self.KeyboardState.IsKeyDown( (OpenTK.Windowing.GraphicsLibraryFramework.Keys)key );
         }
 
+        public static bool MouseDown( int mouseButton ) {
+            return self.MouseState.IsButtonDown( (OpenTK.Windowing.GraphicsLibraryFramework.MouseButton)( mouseButton - 1 ) );
+        }
+
         public static bool MouseJustDown( int mouseButton ) {
             return self.MouseState.IsButtonPressed( (OpenTK.Windowing.GraphicsLibraryFramework.MouseButton)( mouseButton - 1 ) );
         }
 
+        public static bool MouseJustUp( int mouseButton ) {
+            return self.MouseState.IsButtonReleased( (OpenTK.Windowing.GraphicsLibraryFramework.MouseButton)( mouseButton - 1 ) );
+        }
 
+        public static Vector2 MouseScreenPos() {
+            return new Vector2( self.MouseState.X, self.MouseState.Y );
+        }
+        public static Vector2 GetSurfaceSize() {
+            return new Vector2( surfaceWidth, surfaceHeight );
+        }
 
+        public static void QuitGame() {
+            shouldClose = true;
+        }
+
+        public static void MoveToGameMode( GameMode gameMode ) {
+            nextGameMode = gameMode;
+        }
+
+        public static bool NetworkConnectToServer() {
+            return gameClient.ConnectToServer( GameSettings.Current.ServerIp, GameSettings.Current.ServerPort );
+        }
+
+        public static void NetworkDisconnectFromServer() {
+            gameClient.DisconnectFromServer();
+        }
+
+        public static void NetworkSendPacket( byte[] packet, bool reliable ) {
+            gameClient.NetworkSendPacket( packet, reliable );
+        }
     }
 }

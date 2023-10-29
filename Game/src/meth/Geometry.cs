@@ -41,13 +41,27 @@ namespace Game {
             max = Vector2.Zero;
         }
 
-        public void SetFromCenterDims(Vector2 center, Vector2 dims) {
+        public RectBounds SetFromMinMax( Vector2 min, Vector2 max ) {
+            this.min = min;
+            this.max = max;
+            return this;
+        }
+        public RectBounds SetFromCenterDims(Vector2 center, Vector2 dims) {
             min = center - dims / 2;
             max = center + dims / 2;
+            return this;
+        }
+
+        public RectBounds SetFromCenterDims( float x, float y, float w, float h ) {
+            return SetFromCenterDims( new Vector2( x, y ), new Vector2( w, h ) );
         }
 
         public float GetRaduis() {
             return ( max - min ).Length / 2;
+        }
+
+        public Vector2 GetCenter() {
+            return ( min + max ) / 2;
         }
 
         public Vector2 GetClosestPoint( Vector2 p ) {

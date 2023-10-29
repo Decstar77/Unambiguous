@@ -2,9 +2,9 @@
 using SoLoud;
 
 namespace Game {
-    public class GameModeMainMenu : GameMode {
+    public class GameModeMutliplayerMenu : GameMode {
         public UIMaster uiMaster = new UIMaster();
-        private float buttonY = 0.35f;
+        private float buttonY = 0.45f;
         private float buttonYStep = 0.1f;
         private SoloudObject sndButtonHover;
         private SoloudObject sndButtonClick;
@@ -12,10 +12,8 @@ namespace Game {
         public override void Init() {
             sndButtonHover = Content.LoadWav( "sfxd03.wav" );
             sndButtonClick = Content.LoadWav( "sfxd05.wav" );
-            AddButton( "Single Pringle", () => { Engine.AudioPlay( sndButtonClick ); Engine.MoveToGameMode( new GameModeGame() ); } );
-            AddButton( "Many Penny", () => { Engine.AudioPlay( sndButtonClick ); Engine.MoveToGameMode( new GameModeMutliplayerMenu() ); } );
-            AddButton( "Options", () => { Engine.AudioPlay( sndButtonClick ); } );
-            AddButton( "Quit", () => Engine.QuitGame() );
+            AddButton( "Connect", () => { Engine.AudioPlay( sndButtonClick ); Engine.NetworkConnectToServer(); } );
+            AddButton( "Back", () => { Engine.AudioPlay( sndButtonClick ); Engine.MoveToGameMode( new GameModeMainMenu() ); }  );
         }
 
         private void AddButton( string text, OnClickDelegate onClick ) {
@@ -32,7 +30,7 @@ namespace Game {
 
         public override void Shutdown() {
         }
-        
+
         public override void UpdateTick( float dt ) {
         }
 

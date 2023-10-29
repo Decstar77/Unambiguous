@@ -79,7 +79,7 @@ namespace Game
                  topRight
             };
 
-            Engine.GLEnableAlphaBlending();
+            Engine.GLEnablePreMultipliedAlphaBlending();
 
             fontProgram.Bind();
             fontProgram.SetUniformMat4( "MatrixTransform", ref Engine.screenProjection );

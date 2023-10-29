@@ -9,6 +9,29 @@ namespace Game {
 
     public static class Colors {
         public static Vector4 WHITE = new Vector4(1, 1, 1, 1);
+        public static Vector4 BLACK = new Vector4(0, 0, 0, 1);
+        public static Vector4 RED = new Vector4(0.9f, 0, 0, 1);
+        public static Vector4 GREEN = new Vector4(0, 0.9f, 0, 1);
+        public static Vector4 BLUE = new Vector4(0, 0, 0.9f, 1);
+        public static Vector4 YELLOW = new Vector4(0.9f, 0.9f, 0, 1);
+        public static Vector4 CYAN = new Vector4(0, 0.9f, 0.9f, 1);
+        public static Vector4 MAGENTA = new Vector4(0.9f, 0, 0.9f, 1);
+        public static Vector4 SKY_BLUE = new Vector4(0.5f, 0.5f, 1, 1);
+        public static Vector4 PETER_RIVER = FromHex( "#3498db" );
+        public static Vector4 AMETHYST = FromHex( "#9b59b6" );
+        public static Vector4 MIDNIGHT_BLUE = FromHex( "#2c3e50" );
+        public static Vector4 SUN_FLOWER = FromHex( "#f1c40f" );
+        public static Vector4 CARROT = FromHex( "#e67e22" );
+        public static Vector4 ALIZARIN = FromHex( "#e74c3c" );
+        public static Vector4 SILVER = FromHex("#bdc3c7");
+
+        private static Vector4 FromHex( string h ) {
+            h = h.Replace( "#", "" );
+            byte r = byte.Parse( h.Substring( 0, 2 ), System.Globalization.NumberStyles.HexNumber );
+            byte g = byte.Parse( h.Substring( 2, 2 ), System.Globalization.NumberStyles.HexNumber );
+            byte b = byte.Parse( h.Substring( 4, 2 ), System.Globalization.NumberStyles.HexNumber );
+            return new Vector4( r / 255.0f, g / 255.0f, b / 255.0f, 1 );
+        }
     }
 
     public enum DrawCommandType {
@@ -19,6 +42,8 @@ namespace Game {
         TEXT,
         LINE,
         TRIANGLES,
+
+        SCREEN_RECT
     };
 
     public struct DrawCommand {
@@ -40,11 +65,13 @@ namespace Game {
         public int                  gridLevel; // In the ISO grid
         public Vector2              vanishingPoint;
 
+        public bool                 center;
         public string               text;
     }
 
     public class DrawCommands {
         public List<DrawCommand> commands = new List<DrawCommand>();
+        public Vector4 currentColor = Colors.WHITE;
 
         public void Clear() {
             commands.Clear();
@@ -77,7 +104,22 @@ namespace Game {
         public void DrawRect( RectBounds rect ) {
             DrawRect( rect.min, rect.max );
         }
-        
+
+        public void DrawScreenRect( Vector2 bl, Vector2 tr ) {
+            DrawCommand cmd = new DrawCommand();
+            cmd.type = DrawCommandType.SCREEN_RECT;
+            cmd.color = currentColor;
+            cmd.bl = bl;
+            cmd.br = new Vector2( tr.X, bl.Y );
+            cmd.tr = tr;
+            cmd.tl = new Vector2( bl.X, tr.Y );
+            commands.Add( cmd );
+        }
+
+        public void DrawScreenRect( RectBounds rect ) {
+            DrawScreenRect( rect.min, rect.max );
+        }
+
         public void DrawBox( BoxCollider box ) {
             DrawCommand cmd = new DrawCommand();
             cmd.type = DrawCommandType.RECT;
@@ -95,12 +137,13 @@ namespace Game {
             commands.Add( cmd );
         }
 
-        public void DrawText( string text, Vector2 p ) {
+        public void DrawText( string text, Vector2 p, bool center = false ) {
             DrawCommand cmd = new DrawCommand();
             cmd.type = DrawCommandType.TEXT;
             cmd.color = Colors.WHITE;
             cmd.text = text;
             cmd.c = p;
+            cmd.center = center;
             commands.Add( cmd );
         }
 
