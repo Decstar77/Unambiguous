@@ -67,6 +67,8 @@ namespace Game {
 
             gameClient = new GameClient();
 
+            MapActionRegistry.Init();
+
             gameMode = new GameModeMainMenu();
             gameMode.Init( new GameModeInitArgs() );
         }
@@ -150,7 +152,7 @@ namespace Game {
                             tr.X, tr.Y
                         };
 
-                        Vector2 c = WorldPosToScreenPos( cmd.c - camera.pos );
+                        Vector2 c = ViewPosToScreenPos( cmd.c - camera.pos );
                         float r = WorldLengthToScreenLength( cmd.r ) - 2.0f;
 
                         GLEnableAlphaBlending();
@@ -287,7 +289,7 @@ namespace Game {
             return ( worldLength / camera.width ) * viewport.Z;
         }
 
-        public static Vector2 WorldPosToScreenPos( Vector2 world ) {
+        public static Vector2 ViewPosToScreenPos( Vector2 world ) {
             // @NOTE: Convert to [ 0, 1 ] not NDC[ -1, 1 ] because 
             // @NOTE: we're doing a small optimization here by not doing the inverse of the camera matrix
             // @NOTE: but instead just using the camera width and height
@@ -307,7 +309,7 @@ namespace Game {
             return new Vector2( sx, sy );
         }
 
-        public static Vector2 ScreenPosToWorldPos( Vector2 screenPos ) {
+        public static Vector2 ScreenPosToViewPos( Vector2 screenPos ) {
             screenPos.Y = surfaceHeight - screenPos.Y;
 
             // @NOTE: Convert to [ 0, 1] not NDC[-1, 1] because 
@@ -328,17 +330,27 @@ namespace Game {
             return new Vector2( wx, wy );
         }
 
+        public static Vector2 ScreenPosToWorldPos( Vector2 screenPos ) {
+            Vector2 viewPos = ScreenPosToViewPos( screenPos );
+            return viewPos + camera.pos;
+        }
+
+        public static Vector2 WorldPosToScreenPos( Vector2 worldPos ) {
+            Vector2 viewPos = worldPos - camera.pos;
+            return ViewPosToScreenPos( viewPos );
+        }
+
         public static void CameraSetZoomCenter( float zoom ) {
             zoom = Math.Clamp( zoom, 0.0f, 1.0f );
 
-            Vector2 centerPoint1 = ScreenPosToWorldPos( new Vector2( surfaceWidth / 2.0f, surfaceHeight / 2.0f ) );
+            Vector2 centerPoint1 = ScreenPosToViewPos( new Vector2( surfaceWidth / 2.0f, surfaceHeight / 2.0f ) );
 
             camera.zoom = zoom;
             camera.width = camera.minWidth + ( camera.maxWidth - camera.minWidth ) * camera.zoom;
             camera.height = camera.minHeight + ( camera.maxHeight - camera.minHeight ) * camera.zoom;
             ResetSurface( surfaceWidth, surfaceHeight );
 
-            Vector2 centerPoint2 = ScreenPosToWorldPos( new Vector2( surfaceWidth / 2.0f, surfaceHeight / 2.0f ) );
+            Vector2 centerPoint2 = ScreenPosToViewPos( new Vector2( surfaceWidth / 2.0f, surfaceHeight / 2.0f ) );
 
             camera.pos = camera.pos + ( centerPoint1 - centerPoint2 );
         }
@@ -346,18 +358,17 @@ namespace Game {
         public static void CameraSetZoomPoint( float zoom, Vector2 screenPoint ) {
             zoom = Math.Clamp( zoom, 0.0f, 1.0f );
 
-            Vector2 centerPoint1 = ScreenPosToWorldPos( screenPoint );
+            Vector2 centerPoint1 = ScreenPosToViewPos( screenPoint );
 
             camera.zoom = zoom;
             camera.width = camera.minWidth + ( camera.maxWidth - camera.minWidth ) * camera.zoom;
             camera.height = camera.minHeight + ( camera.maxHeight - camera.minHeight ) * camera.zoom;
             ResetSurface( surfaceWidth, surfaceHeight );
 
-            Vector2 centerPoint2 = ScreenPosToWorldPos( screenPoint );
+            Vector2 centerPoint2 = ScreenPosToViewPos( screenPoint );
 
             camera.pos = camera.pos + ( centerPoint1 - centerPoint2 );
         }
-
 
         private static void ResetSurface( float w, float h ) {
             float ratioX = w / camera.width;
@@ -587,6 +598,10 @@ namespace Game {
 
         public static Vector2 MouseScreenDelta() {
             return new Vector2( self.MouseState.Delta.X, self.MouseState.Delta.Y );
+        }
+
+        public static Vector2 MouseWorldPos() {
+            return ScreenPosToWorldPos( MouseScreenPos() );
         }
 
         public static float MouseScrollDelta() {

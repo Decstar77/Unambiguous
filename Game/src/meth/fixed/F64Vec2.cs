@@ -22,8 +22,7 @@
 // SOFTWARE.
 //
 using FixPointCS;
-using System;
-using System.Numerics;
+using OpenTK.Mathematics;
 using System.Runtime.CompilerServices;
 
 namespace FixMath

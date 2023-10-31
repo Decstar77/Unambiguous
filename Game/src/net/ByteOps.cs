@@ -1,5 +1,5 @@
 ﻿
-//using FixMath;
+using FixMath;
 
 namespace Game {
     public static class ByteOps {
@@ -21,15 +21,15 @@ namespace Game {
             data.Add( (byte)( v ) );
         }
 
-        //public static void PlonkEntityId( List<byte> data, EntityId id ) {
-        //    PlonkInt( data, id.index );
-        //    PlonkInt( data, id.generation );
-        //}
+        public static void PlonkEntityId( List<byte> data, EntityId id ) {
+            PlonkInt( data, id.index );
+            PlonkInt( data, id.generation );
+        }
 
-        //public static void PlonkVector2Fp( List<byte> data, Vector2Fp v ) {
-        //    PlonkLong( data, v.RawX );
-        //    PlonkLong( data, v.RawY );
-        //}
+        public static void PlonkVector2Fp( List<byte> data, Vector2Fp v ) {
+            PlonkLong( data, v.RawX );
+            PlonkLong( data, v.RawY );
+        }
 
         public static int ScoopInt( byte[] data, ref int offset ) {
             int v = (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | (data[offset + 3]);
@@ -50,18 +50,18 @@ namespace Game {
             return v;
         }
 
-        //public static EntityId ScoopEntityId( byte[] data, ref int offset ) {
-        //    EntityId id = new EntityId();
-        //    id.index = ScoopInt( data, ref offset );
-        //    id.generation = ScoopInt( data, ref offset );
-        //    return id;
-        //}
+        public static EntityId ScoopEntityId( byte[] data, ref int offset ) {
+            EntityId id = new EntityId();
+            id.index = ScoopInt( data, ref offset );
+            id.generation = ScoopInt( data, ref offset );
+            return id;
+        }
 
-        //public static Vector2Fp ScoopVector2Fp( byte[] data, ref int offset ) {
-        //    Vector2Fp v = new Vector2Fp();
-        //    v.RawX = ScoopLong( data, ref offset );
-        //    v.RawY = ScoopLong( data, ref offset );
-        //    return v;
-        //}
+        public static Vector2Fp ScoopVector2Fp( byte[] data, ref int offset ) {
+            Vector2Fp v = new Vector2Fp();
+            v.RawX = ScoopLong( data, ref offset );
+            v.RawY = ScoopLong( data, ref offset );
+            return v;
+        }
     }
 }

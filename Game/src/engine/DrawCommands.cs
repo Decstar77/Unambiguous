@@ -90,10 +90,10 @@ namespace Game {
             DrawCircle( circle.center, circle.radius );
         }
 
-        public void DrawRect( Vector2 bl, Vector2 tr ) {
+        public void DrawRect( Vector2 bl, Vector2 tr, Vector4 color ) {
             DrawCommand cmd = new DrawCommand();
             cmd.type = DrawCommandType.RECT;
-            cmd.color = Colors.WHITE;
+            cmd.color = color;
             cmd.bl = bl;
             cmd.br = new Vector2( tr.X, bl.Y );
             cmd.tr = tr;
@@ -101,9 +101,9 @@ namespace Game {
             commands.Add( cmd );
         }
 
-        public void DrawRect( RectBounds rect ) {
-            DrawRect( rect.min, rect.max );
-        }
+        public void DrawRect( RectBounds rect, Vector4 color ) { DrawRect( rect.min, rect.max, color ); }
+        public void DrawRect( Vector2 bl, Vector2 tr ) { DrawRect( bl, tr, Colors.WHITE ); }
+        public void DrawRect( RectBounds rect ) { DrawRect( rect, Colors.WHITE ); }
 
         public void DrawScreenRect( Vector2 bl, Vector2 tr ) {
             DrawCommand cmd = new DrawCommand();

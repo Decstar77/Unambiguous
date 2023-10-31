@@ -76,6 +76,11 @@ namespace Game {
         public bool ContainsPoint( Vector2 p ) {
             return p.X >= min.X && p.X <= max.X && p.Y >= min.Y && p.Y <= max.Y;
         }
+
+        public void Translate( Vector2 d ) {
+            min += d;
+            max += d;
+        }
     }
 
     public struct BoxCollider {

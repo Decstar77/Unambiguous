@@ -1,33 +1,71 @@
-﻿using OpenTK.Mathematics;
+﻿using FixMath;
+using OpenTK.Mathematics;
 using Shared;
 using SoLoud;
 using System.Diagnostics;
 
 namespace Game {
+    public struct EntityId {
+        public int index;
+        public int generation;
+        public EntityId() {
+            index = -1;
+            generation = -1;
+        }
 
-    public enum EntityType {
+        public static EntityId INVALID = new EntityId();
+        public bool IsValid() {
+            return index != -1 && generation != -1;
+        }
+
+        public static bool operator ==( EntityId a, EntityId b ) { return a.index == b.index && a.generation == b.generation; }
+        public static bool operator !=( EntityId a, EntityId b ) { return a.index != b.index || a.generation != b.generation; }
+        public override bool Equals( object obj ) { return obj is EntityId && this == (EntityId)obj; }
+    }
+
+    public enum EntityType : int {
         INVALID = 0,
-        BALL = 1,
+
+        UNIT_BEGIN,
+        UNIT_WORKER,
+        UNIT_END,
     }
 
     public class Entity {
-        public EntityType type;
-        public Vector2 pos;
+        public EntityId     id;
+        public EntityType   type;
+        public Vector2Fp    pos;
+        public Vector2      visualPos;
+        public Vector2      vanishingPoint; // @TODO: This should go into the sprite I think, as the origin point. I don't think the collider should use this either..,
+
         public int gridLevel = 1;
+        public int playerNumber;
         public SpriteTexture sprite;
         public CircleCollider circleCollider;
+        public bool           isSelected;
+        public RectBounds     selectionBoundsLocal;
+        public RectBounds SelectionBoundsWorld { get { RectBounds w = selectionBoundsLocal; w.Translate( visualPos ); return w; } }
+
+        public void SetPos( Vector2Fp newPos ) {
+            pos = newPos;
+            visualPos = pos.ToV2();
+            vanishingPoint = visualPos - new Vector2( 0, 12 );
+        }
     }
 
     public class GameModeGame : GameMode {
-        private IsoGrid grid = new IsoGrid(10, 10, 2);
-        private SpriteTexture workerTexture = null;
-        private SpriteTexture gridTexture = null;
-        private SpriteTexture gridBlockTexture = null;
-        private SpriteTexture ballTexture = null;
-        private SoloudObject sndHuh = null;
-        private UIMaster uiMaster = new UIMaster();
+        private SpriteTexture       sprWorker = null;
+        private SpriteTexture       sprWorkerSelection = null;
+        private SpriteTexture       sprGrid = null;
+        private SpriteTexture       sprGridBlock = null;
+        private SpriteTexture       sprBall = null;
+
+        private SoloudObject        sndHuh = null;
+
+        private UIMaster            uiMaster = new UIMaster();
+
+        private IsoGrid             grid = new IsoGrid(10, 10, 2);
         private Entity[]            entities = new Entity[ 100 ];
-        private int                 entityCount = 0;
         private SyncQueues          syncQueues = new SyncQueues();
         private int                 turnNumber = 1;
         private float               turnAccumulator = 0.0f;
@@ -37,6 +75,7 @@ namespace Game {
         private bool                isDragging = false;
         private Vector2             startDrag = Vector2.Zero;
         private Vector2             endDrag = Vector2.Zero;
+        private Vector2             testVec = Vector2.Zero;
 
         public override void Init( GameModeInitArgs args ) {
             isMultiplayer = args.multiplayer;
@@ -47,17 +86,21 @@ namespace Game {
                 localPlayerNumber = 1;
             }
 
-            workerTexture = Content.LoadSpriteTexture( "unit_basic_man_single.png" );
-            gridTexture = Content.LoadSpriteTexture( "tile_test.png" );
-            gridBlockTexture = Content.LoadSpriteTexture( "tile_blocker.png" );
-            ballTexture = Content.LoadSpriteTexture( "ball_basic.png" );
+            sprWorker = Content.LoadSpriteTexture( "unit_basic_man_single.png" );
+            sprWorkerSelection = Content.LoadSpriteTexture( "unit_basic_man_selection.png" );
+            sprGrid = Content.LoadSpriteTexture( "tile_test.png" );
+            sprGridBlock = Content.LoadSpriteTexture( "tile_blocker.png" );
+            sprBall = Content.LoadSpriteTexture( "ball_basic.png" );
             sndHuh = Content.LoadWav( "huh.wav" );
 
-            grid.FillLevel( 0, gridTexture );
-            grid.PlaceTile( 0, 0, 1, gridBlockTexture );
-            grid.PlaceTile( 2, 3, 1, gridBlockTexture );
-            grid.PlaceTile( 3, 3, 1, gridBlockTexture );
-            grid.PlaceTile( 7, 4, 1, gridBlockTexture );
+            grid.FillLevel( 0, sprGrid );
+            grid.PlaceTile( 0, 0, 1, sprGridBlock );
+            grid.PlaceTile( 2, 3, 1, sprGridBlock );
+            grid.PlaceTile( 3, 3, 1, sprGridBlock );
+            grid.PlaceTile( 7, 4, 1, sprGridBlock );
+
+            Vector2 p = grid.MapPosToWorldPos( 5, 5, 1 );
+            MapApply_SpawnWorkder( p.ToFp(), 1 );
 
             syncQueues.Start();
         }
@@ -79,7 +122,7 @@ namespace Game {
             if ( turnAccumulator >= SyncQueues.TurnRateMS ) {
                 turnAccumulator = 0;
                 if ( syncQueues.CanTurn() == true ) {
-                    localTurn.checkSum = 2039;
+                    localTurn.checkSum = MapComputeCheckSum();
                     localTurn.turnNumber = turnNumber + syncQueues.GetSlidingWindowWidth();
 
                     syncQueues.AddTurn( localPlayerNumber, localTurn );
@@ -100,7 +143,7 @@ namespace Game {
                     MapTurn player1Turn = syncQueues.GetNextTurn( 1 );
                     MapTurn player2Turn = syncQueues.GetNextTurn( 2 );
 
-                    Tick( player1Turn, player2Turn );
+                    MapTick( player1Turn, player2Turn );
 
                     syncQueues.FinishTurn();
                 }
@@ -116,6 +159,11 @@ namespace Game {
                 Engine.camera.pos += cameraDir * 25.0f * dt;
             }
 
+            if ( Engine.MouseScrollDelta() != 0 ) {
+                float zoom = Engine.camera.zoom + Engine.MouseScrollDelta() * -0.1f;
+                Engine.CameraSetZoomPoint( zoom, Engine.MouseScreenPos() );
+            }
+
             bool mouseMoved = true;
             Vector2 mouseScreen = Engine.MouseScreenPos();
             Vector2 mouseDelta = Engine.MouseScreenDelta();
@@ -123,24 +171,67 @@ namespace Game {
                 mouseMoved = false;
             }
 
-            if ( Engine.MouseJustDown( 1 ) ) { startDrag = mouseScreen; } 
+            if ( Engine.MouseJustDown( 1 ) ) { startDrag = mouseScreen; }
             if ( Engine.MouseDown( 1 ) && mouseMoved ) { isDragging = true; }
             if ( isDragging ) { endDrag = mouseScreen; }
             if ( Engine.MouseJustUp( 1 ) ) {
                 if ( isDragging ) {
                     isDragging = false;
+                    Vector2 startWorld = Engine.ScreenPosToWorldPos( startDrag );
+                    Vector2 endWorld = Engine.ScreenPosToWorldPos( endDrag );
+
+                    Vector2 minWorld = Vector2.ComponentMin( startWorld, endWorld );
+                    Vector2 maxWorld = Vector2.ComponentMax( startWorld, endWorld );
+
+                    RectBounds selectionRect = new RectBounds().SetFromMinMax( minWorld, maxWorld );
+                    for ( int entityIndex = 0; entityIndex < entities.Length; entityIndex++ ) {
+                        Entity ent = entities[entityIndex];
+                        if ( ent != null ) {
+                            if ( Intersections.RectVsRect( selectionRect, ent.SelectionBoundsWorld ) ) {
+                                ent.isSelected = true;
+                            }
+                            else {
+                                ent.isSelected = false;
+                            }
+                        }
+                    }
+                }
+                else {
+                    for ( int entityIndex = 0; entityIndex < entities.Length; entityIndex++ ) {
+                        Entity ent = entities[entityIndex];
+                        if ( ent != null ) {
+                            ent.isSelected = false;
+                        }
+                    }
+                    //
+                }
+            }
+
+            if ( Engine.MouseJustUp( 2 ) ) {
+                for ( int entityIndex = 0; entityIndex < entities.Length; entityIndex++ ) {
+                    Entity ent = entities[entityIndex];
+                    if ( ent != null ) {
+                        if ( ent.isSelected == true ) {
+                            Vector2 worldPos = Engine.ScreenPosToWorldPos( Engine.MouseScreenPos() );
+                            MapCreateAction_MoveUnit( ent, worldPos );
+                        }
+                    }
                 }
             }
         }
 
-        private void Tick( MapTurn player1Turn, MapTurn player2Turn ) {
-            Debug.Assert( player1Turn.turnNumber == player2Turn.turnNumber );
-            Debug.Assert( player1Turn.turnNumber == turnNumber );
-            turnNumber++;
-        }
-
         public override void UpdateRender( float dt ) {
             DrawCommands drawCommands = new DrawCommands();
+
+            for ( int entityIndex = 0; entityIndex < entities.Length; entityIndex++ ) {
+                Entity ent = entities[ entityIndex ];
+                if ( ent != null ) {
+                    if ( ent.isSelected == true ) {
+                        drawCommands.DrawSprite( sprWorkerSelection, ent.vanishingPoint - new Vector2( 0.5f, 0 ), 0, ent.gridLevel, ent.visualPos );
+                    }
+                    drawCommands.DrawSprite( ent.sprite, ent.visualPos, 0, ent.gridLevel, ent.vanishingPoint );
+                }
+            }
 
             for ( int z = 0; z < grid.levelCount; z++ ) {
                 for ( int x = 0; x < grid.widthCount; x++ ) {
@@ -154,6 +245,14 @@ namespace Game {
 
             drawCommands.commands = drawCommands.commands.OrderBy( x => x.gridLevel ).ThenBy( x => -x.vanishingPoint.Y ).ToList();
 
+            if ( isDragging ) {
+                Vector2 startWorld = Engine.ScreenPosToWorldPos( startDrag );
+                Vector2 endWorld = Engine.ScreenPosToWorldPos( endDrag );
+                Vector2 minWorld = Vector2.ComponentMin( startWorld, endWorld );
+                Vector2 maxWorld = Vector2.ComponentMax( startWorld, endWorld );
+                drawCommands.DrawRect( minWorld, maxWorld, new Vector4( 0.2f, 0.2f, 0.8f, 0.5f ) );
+            }
+
             if ( CVars.DrawVanishingPoint.Value || false ) {
                 for ( int x = 0; x < grid.widthCount; x++ ) {
                     for ( int y = grid.heightCount - 1; y >= 0; y-- ) {
@@ -164,12 +263,15 @@ namespace Game {
                 }
             }
 
-            if ( isDragging ) {
-                Vector2 min = Vector2.ComponentMin( startDrag, endDrag );
-                Vector2 max = Vector2.ComponentMax( startDrag, endDrag );
-                drawCommands.currentColor = new Vector4( 0.2f, 0.2f, 0.8f, 0.5f );
-                drawCommands.DrawScreenRect( min, max );
+            if ( CVars.DrawVanishingPoint.Value || false ) {
+                for ( int i = 0; i < entities.Length; i++ ) {
+                    if ( entities[i] != null ) {
+                        drawCommands.DrawRect( entities[i].SelectionBoundsWorld, new Vector4( 0.5f, 0.5f, 0.5f, 0.5f ) );
+                    }
+                }
             }
+
+            drawCommands.DrawText( $"PlayerNumber={localPlayerNumber}", Vector2.Zero );
 
             //for ( int x = 0; x < grid.widthCount; x++ ) {
             //    for ( int y = grid.heightCount - 1; y >= 0; y-- ) {
@@ -198,6 +300,103 @@ namespace Game {
             uiMaster.UpdateAndRender( drawCommands );
 
             Engine.SubmitDrawCommands( drawCommands );
+        }
+
+        private Entity MapLookUpEntity( EntityId id ) {
+            for ( int entityIndex = 0; entityIndex < entities.Length; entityIndex++ ) {
+                Entity ent = entities[entityIndex];
+                if ( ent != null ) {
+                    if ( ent.id == id ) {
+                        return ent;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private void MapTick( MapTurn player1Turn, MapTurn player2Turn ) {
+            Logger.Log( $"Tick={ turnNumber } \t|| Checksum={ player1Turn.checkSum }" );
+            Debug.Assert( player1Turn.turnNumber == player2Turn.turnNumber );
+            Debug.Assert( player1Turn.turnNumber == turnNumber );
+            Debug.Assert( player1Turn.checkSum == player2Turn.checkSum );
+
+            for ( int actionIndex = 0; actionIndex < player1Turn.actions.Count; actionIndex++ ) {
+                MapApplyAction( player1Turn.actions[actionIndex] );
+            }
+            for ( int actionIndex = 0; actionIndex < player2Turn.actions.Count; actionIndex++ ) {
+                MapApplyAction( player2Turn.actions[actionIndex] );
+            }
+
+            turnNumber++;
+        }
+
+        public long MapComputeCheckSum() {
+            long sum = 0;
+            for ( int entityIndex = 0; entityIndex < entities.Length; entityIndex++ ) {
+                Entity ent = entities[entityIndex];
+                if ( ent != null ) {
+                    sum -= ent.pos.RawX;
+                    sum += ent.pos.RawY;
+                }
+            }
+
+            return sum;
+        }
+
+        public void MapApplyAction( MapAction mapAction ) {
+            switch ( mapAction.GetMapActionType() ) {
+                case MapActionType.INVALID: {
+                    Logger.Log( "ERROR INVALID ACTION" );
+                };
+                break;
+                case MapActionType.MOVE_UNITS: {
+                    MapAction_MoveUnits action = ( MapAction_MoveUnits )mapAction;
+                    Entity ent = MapLookUpEntity( action.entId );
+                    if ( ent != null ) {
+                        ent.SetPos( action.destination );
+                    }
+                }
+                break;
+                default: {
+                    Logger.Log( "ERROR INVALID ACTION" );
+                }
+                break;
+            }
+        }
+
+        public Entity MapApply_SpawnEntity( EntityType type, int playerNumber ) {
+            for ( int i = 0; i < entities.Length; i++ ) {
+                if ( entities[i] == null ) {
+                    Entity ent = entities[i] = new Entity();
+                    ent.type = type;
+                    ent.playerNumber = playerNumber;
+                    ent.id.index = i;
+                    ent.id.generation = 1;
+                    return ent;
+                }
+            }
+
+            Debug.Assert( false );
+
+            return null;
+        }
+
+        public Entity MapApply_SpawnWorkder( Vector2Fp pos, int playerNumber ) {
+            Entity ent = MapApply_SpawnEntity( EntityType.UNIT_WORKER, playerNumber );
+            if ( ent != null ) {
+                ent.SetPos( pos );
+                ent.sprite = sprWorker;
+                ent.selectionBoundsLocal.SetFromCenterDims( new Vector2( -1, -6 ), new Vector2( 5, 12 ) );
+            }
+            return ent;
+        }
+
+        public void MapCreateAction_MoveUnit( Entity ent, Vector2 destination ) {
+            MapAction_MoveUnits action =new MapAction_MoveUnits();
+            action.entId = ent.id;
+            action.destination = destination.ToFp();
+            localTurn.actions.Add( action );
         }
 
         public override void Shutdown() {

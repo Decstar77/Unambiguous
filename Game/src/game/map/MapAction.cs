@@ -1,7 +1,9 @@
-﻿namespace Game {
+﻿using FixMath;
+
+namespace Game {
     public enum MapActionType {
         INVALID,
-        SELECTION_MOVE,
+        MOVE_UNITS,
         SELECTION_GATHER_RESOURCE,
     }
 
@@ -9,6 +11,24 @@
         MapActionType GetMapActionType();
         void Plonk( List<byte> data );
         void Scoop( byte[] data, ref int offset );
-        void Apply( Map map );
+    }
+
+    public class MapAction_MoveUnits : MapAction {
+        public EntityId     entId;
+        public Vector2Fp    destination;
+
+        public MapActionType GetMapActionType() {
+            return MapActionType.MOVE_UNITS;
+        }
+
+        public void Plonk( List<byte> data ) {
+            ByteOps.PlonkEntityId( data, entId );
+            ByteOps.PlonkVector2Fp( data, destination );
+        }
+
+        public void Scoop( byte[] data, ref int offset ) {
+            entId = ByteOps.ScoopEntityId( data, ref offset );
+            destination = ByteOps.ScoopVector2Fp( data, ref offset );
+        }
     }
 }
