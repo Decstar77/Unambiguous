@@ -1,4 +1,5 @@
 ﻿using FixMath;
+using FixPointCS;
 using OpenTK.Mathematics;
 using Shared;
 using SoLoud;
@@ -36,20 +37,22 @@ namespace Game {
         public EntityType   type;
         public Vector2Fp    pos;
         public Vector2      visualPos;
-        public Vector2      vanishingPoint; // @TODO: This should go into the sprite I think, as the origin point. I don't think the collider should use this either..,
+
+        public bool         hasDestination;
+        public Vector2Fp      destination;
 
         public int gridLevel = 1;
         public int playerNumber;
-        public SpriteTexture sprite;
+        public Sprite         sprite;
         public CircleCollider circleCollider;
         public bool           isSelected;
         public RectBounds     selectionBoundsLocal;
         public RectBounds SelectionBoundsWorld { get { RectBounds w = selectionBoundsLocal; w.Translate( visualPos ); return w; } }
 
-        public void SetPos( Vector2Fp newPos ) {
+
+        public void TeleportTo( Vector2Fp newPos ) {
             pos = newPos;
             visualPos = pos.ToV2();
-            vanishingPoint = visualPos - new Vector2( 0, 12 );
         }
     }
 
@@ -225,11 +228,16 @@ namespace Game {
 
             for ( int entityIndex = 0; entityIndex < entities.Length; entityIndex++ ) {
                 Entity ent = entities[ entityIndex ];
-                if ( ent != null ) {
+                if ( ent != null && ent.sprite.texture != null ) {
+                    Vector2 p = ent.pos.ToV2();
+                    ent.visualPos = Vector2.Lerp( ent.visualPos, p, 0.1f );
+
                     if ( ent.isSelected == true ) {
-                        drawCommands.DrawSprite( sprWorkerSelection, ent.vanishingPoint - new Vector2( 0.5f, 0 ), 0, ent.gridLevel, ent.visualPos );
+                        drawCommands.DrawSprite( sprWorkerSelection, ent.visualPos - new Vector2( 0.5f, 0 ), 0, ent.gridLevel, ent.visualPos );
                     }
-                    drawCommands.DrawSprite( ent.sprite, ent.visualPos, 0, ent.gridLevel, ent.vanishingPoint );
+
+                    Vector2 spriteCenter = ent.visualPos + ent.sprite.originOffset;
+                    drawCommands.DrawSprite( ent.sprite.texture, spriteCenter, 0, ent.gridLevel, ent.visualPos );
                 }
             }
 
@@ -263,7 +271,7 @@ namespace Game {
                 }
             }
 
-            if ( CVars.DrawVanishingPoint.Value || false ) {
+            if ( CVars.DrawSelectionBounds.Value || false ) {
                 for ( int i = 0; i < entities.Length; i++ ) {
                     if ( entities[i] != null ) {
                         drawCommands.DrawRect( entities[i].SelectionBoundsWorld, new Vector4( 0.5f, 0.5f, 0.5f, 0.5f ) );
@@ -271,7 +279,10 @@ namespace Game {
                 }
             }
 
-            drawCommands.DrawText( $"PlayerNumber={localPlayerNumber}", Vector2.Zero );
+
+            if ( CVars.DrawPlayerStats.Value || false ) {
+                drawCommands.DrawText( $"PlayerNumber={localPlayerNumber}", Vector2.Zero );
+            }
 
             //for ( int x = 0; x < grid.widthCount; x++ ) {
             //    for ( int y = grid.heightCount - 1; y >= 0; y-- ) {
@@ -316,16 +327,33 @@ namespace Game {
         }
 
         private void MapTick( MapTurn player1Turn, MapTurn player2Turn ) {
-            Logger.Log( $"Tick={ turnNumber } \t|| Checksum={ player1Turn.checkSum }" );
+            //Logger.Log( $"Tick={ turnNumber } \t|| Checksum={ player1Turn.checkSum }" );
             Debug.Assert( player1Turn.turnNumber == player2Turn.turnNumber );
             Debug.Assert( player1Turn.turnNumber == turnNumber );
             Debug.Assert( player1Turn.checkSum == player2Turn.checkSum );
 
+            // Player 1 actions
             for ( int actionIndex = 0; actionIndex < player1Turn.actions.Count; actionIndex++ ) {
                 MapApplyAction( player1Turn.actions[actionIndex] );
             }
+            // Player 2 actions
             for ( int actionIndex = 0; actionIndex < player2Turn.actions.Count; actionIndex++ ) {
                 MapApplyAction( player2Turn.actions[actionIndex] );
+            }
+
+            // Update entities
+            for ( int entityIndex = 0; entityIndex < entities.Length; entityIndex++ ) {
+                Entity ent = entities[entityIndex];
+                if ( ent != null ) {
+                    switch ( ent.type ) {
+                        case EntityType.UNIT_WORKER: {
+                            if ( ent.hasDestination == true ) {
+                                ent.pos = Vector2Fp.Lerp( ent.pos, ent.destination, F64.FromFloat( 0.1f ) );
+                            }
+                        }
+                        break;
+                    }
+                }
             }
 
             turnNumber++;
@@ -354,7 +382,8 @@ namespace Game {
                     MapAction_MoveUnits action = ( MapAction_MoveUnits )mapAction;
                     Entity ent = MapLookUpEntity( action.entId );
                     if ( ent != null ) {
-                        ent.SetPos( action.destination );
+                        ent.hasDestination = true;
+                        ent.destination = action.destination;
                     }
                 }
                 break;
@@ -385,9 +414,10 @@ namespace Game {
         public Entity MapApply_SpawnWorkder( Vector2Fp pos, int playerNumber ) {
             Entity ent = MapApply_SpawnEntity( EntityType.UNIT_WORKER, playerNumber );
             if ( ent != null ) {
-                ent.SetPos( pos );
-                ent.sprite = sprWorker;
-                ent.selectionBoundsLocal.SetFromCenterDims( new Vector2( -1, -6 ), new Vector2( 5, 12 ) );
+                ent.TeleportTo( pos );
+                ent.sprite.texture = sprWorker;
+                ent.sprite.originOffset = new Vector2( 0, 12 );
+                ent.selectionBoundsLocal.SetFromCenterDims( new Vector2( -1, 6 ), new Vector2( 5, 12 ) );
             }
             return ent;
         }
@@ -397,6 +427,8 @@ namespace Game {
             action.entId = ent.id;
             action.destination = destination.ToFp();
             localTurn.actions.Add( action );
+
+            //Engine.AudioPlay( sndHuh );
         }
 
         public override void Shutdown() {
