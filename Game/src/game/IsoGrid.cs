@@ -1,29 +1,46 @@
-﻿using OpenTK.Mathematics;
+﻿using FixMath;
+using FixPointCS;
+using OpenTK.Mathematics;
+using System.Diagnostics;
 
-namespace Game
-{
+namespace Game {
+
+    [Flags]
+    public enum IsoTileFlags : int {
+        NONE = 0,
+        BLOCKED = 1,
+    }
+
+    public struct FlowTile {
+        public int parentIndex;
+        public Vector2Fp pos;
+        public Vector2Fp flow;
+    }
 
     public struct IsoTile {
+        public IsoTileFlags     flags;
+        public int              flatIndex;
         public int              xIndex;
         public int              yIndex;
-        public int              zIndex;
-        public Vector2          worldPos;
+        public Vector2Fp        worldPos;
+        public Vector2          worldDrawPos;
         public Vector2          worldVanishingPoint;
-        public ConvexCollider   convexCollider;
+        public ConvexCollider   floorConvexCollider;
+        public ConvexCollider   roofConvexCollider;
         public SpriteTexture    sprite;
     }
 
     public class IsoGrid {
-        public static float TILE_WIDTH = 32;
-        public static float TILE_WIDTH_HALF = TILE_WIDTH / 2;
-        public static float TILE_HEIGHT = 16;
-        public static float TILE_HEIGHT_HALF = TILE_HEIGHT / 2;
-        public static float TILE_LEVE = 16;
-        public static float TILE_LEVEL_HALF = TILE_LEVE / 2;
+        public static int TILE_WIDTH = 32;
+        public static int TILE_WIDTH_HALF = TILE_WIDTH / 2;
+        public static int TILE_HEIGHT = 16;
+        public static int TILE_HEIGHT_HALF = TILE_HEIGHT / 2;
+        public static int TILE_LEVE = 16;
+        public static int TILE_LEVEL_HALF = TILE_LEVE / 2;
         public int widthCount;
         public int heightCount;
-        public int levelCount;
-        public IsoTile[,,] tiles = null;
+        public int level;
+        public IsoTile[] tiles = null;
         public static Vector2 localVanishingPoint = new Vector2( 0, -9 );
         public static float IsoRotation = MathF.Atan( 1.0f / 2.0f ); // 26.565 deg
         public static ConvexCollider tileCollider = new ConvexCollider(
@@ -33,56 +50,142 @@ namespace Game
             new Vector2( 0, -TILE_HEIGHT_HALF - TILE_HEIGHT_HALF)
         );
 
-        public IsoGrid( int wc, int hc, int lc ) {
+        public IsoGrid( int wc, int hc, int level ) {
             widthCount = wc;
             heightCount = hc;
-            levelCount = lc;
-            tiles = new IsoTile[wc, hc, lc];
+            this.level = level;
+            tiles = new IsoTile[wc * hc];
             for ( int x = 0; x < wc; x++ ) {
                 for ( int y = 0; y < hc; y++ ) {
-                    for ( int z = 0; z < lc; z++ ) {
-                        IsoTile tile = new IsoTile();
-                        tile.xIndex = x;
-                        tile.yIndex = y;
-                        tile.zIndex = z;
-                        tile.worldPos = MapPosToWorldPos( x, y, z );
-                        tile.convexCollider = tileCollider.Clone();
-                        tile.convexCollider.Translate( tile.worldPos );
-                        tile.worldVanishingPoint = tile.worldPos + localVanishingPoint;
-                        tiles[x, y, z] = tile;
-                    }
+                    IsoTile tile = new IsoTile();
+                    tile.xIndex = x;
+                    tile.yIndex = y;
+                    tile.flatIndex = PosIndexToFlatIndex( x, y );
+                    tile.worldPos = MapPosToWorldPos( x, y ) + Vector2Fp.FromInt( TILE_WIDTH_HALF, -TILE_HEIGHT_HALF );
+                    tile.floorConvexCollider = tileCollider.Clone();
+                    tile.floorConvexCollider.Translate( tile.worldPos.ToV2() );
+                    tile.roofConvexCollider = tile.floorConvexCollider.Clone();
+                    tile.roofConvexCollider.Translate( new Vector2( 0, TILE_HEIGHT ) );
+                    tile.worldVanishingPoint = tile.worldPos.ToV2() + localVanishingPoint;
+                    tiles[tile.flatIndex] = tile;
                 }
             }
         }
 
-        public void FillLevel( int z, SpriteTexture sprite ) {
-            for ( int x = 0; x < widthCount; x++ ) {
-                for ( int y = 0; y < heightCount; y++ ) {
-                    tiles[x, y, z].sprite = sprite;
-                }
+        public void Fill( SpriteTexture sprite ) {
+            for ( int i = 0; i < tiles.Length; i++ ) {
+                tiles[i].sprite = sprite;
             }
         }
 
-        public void PlaceTile( int x, int y, int z, SpriteTexture sprite ) {
-            tiles[x, y, z].sprite = sprite;
+        public void PlaceTile( int x, int y, IsoTileFlags flags, SpriteTexture sprite ) {
+            Debug.Assert( x >= 0 && x < widthCount );
+            Debug.Assert( y >= 0 && y < heightCount );
+            int flatIndex = PosIndexToFlatIndex( x, y );
+            tiles[flatIndex].flags = flags;
+            tiles[flatIndex].sprite = sprite;
         }
 
-        public Vector2 MapPosToWorldPos( int x, int y, int z ) {
-            x = x - z;
-            y = y + z;
+        public Vector2Fp MapPosToWorldPos( int x, int y ) {
+            return MapPosToWorldPos( new Vector2( x, y ) );
+        }
 
-            Vector2 world = Vector2.Zero;
-            world.X = x * TILE_WIDTH_HALF + y * TILE_WIDTH_HALF;
-            world.Y = -x * TILE_HEIGHT_HALF + y * TILE_HEIGHT_HALF;
+        public Vector2Fp MapPosToWorldPos( Vector2 map ) {
+            map.X = map.X - level;
+            map.Y = map.Y + level;
+
+            Vector2Fp world = Vector2Fp.Zero;
+            world.X = F64.FromFloat( map.X * TILE_WIDTH_HALF + map.Y * TILE_WIDTH_HALF );
+            world.Y = F64.FromFloat( -map.X * TILE_HEIGHT_HALF + map.Y * TILE_HEIGHT_HALF );
 
             return world;
         }
 
         public Vector2 WorldPosToMapPos( Vector2 world ) {
             Vector2 map = Vector2.Zero;
-            map.X = ( world.X / TILE_WIDTH_HALF + world.Y / TILE_HEIGHT_HALF ) / 2;
-            map.Y = ( world.Y / TILE_HEIGHT_HALF - world.X / TILE_WIDTH_HALF ) / 2;
+            map.X = ( ( world.X / TILE_WIDTH_HALF - world.Y / TILE_HEIGHT_HALF ) / 2 ) + level;
+            map.Y = ( ( world.X / TILE_WIDTH_HALF + world.Y / TILE_HEIGHT_HALF ) / 2 ) - level;
+
             return map;
         }
+
+        public FlowTile[] PathFind( int tileX, int tileY ) {
+            FlowTile[] flowTiles = new FlowTile[widthCount * heightCount];
+            int destIndex = PosIndexToFlatIndex( tileX, tileY );
+            flowTiles[destIndex].parentIndex = -1;
+            flowTiles[destIndex].pos = MapPosToWorldPos( tileX, tileY );
+            flowTiles[destIndex].flow = Vector2Fp.Zero;
+
+            int neighborsCount = 0;
+            Span<int> neighbors = stackalloc int[8];
+
+            Queue<int> frontier = new Queue<int>( widthCount * heightCount );
+            frontier.Enqueue( destIndex );
+            while ( frontier.Count != 0 ) {
+                int tileIndex = frontier.Dequeue();
+                GetNeighbors( ref neighbors, ref neighborsCount, tileIndex );
+                for ( int i = 0; i < neighborsCount; i++ ) {
+                    int neighborIndex = neighbors[i];
+                    if ( flowTiles[neighborIndex].parentIndex == -1 && tiles[i].flags != IsoTileFlags.BLOCKED ) { 
+                        flowTiles[neighborIndex].parentIndex = tileIndex;
+                        flowTiles[neighborIndex].pos = tiles[i].worldPos;
+                        flowTiles[neighborIndex].flow = flowTiles[tileIndex].pos - flowTiles[neighborIndex].pos;
+                        frontier.Enqueue( neighborIndex );
+                    }
+                }
+            }
+
+            return flowTiles;
+        }
+
+        public void GetNeighbors( ref Span<int> neighbors, ref int count, int tileIndex ) {
+            (int x, int y) = FlatIndexToPosIndex( tileIndex );
+            count = 0;
+            if ( x > 0 ) {
+                neighbors[count++] = PosIndexToFlatIndex( x - 1, y );
+            }
+            if ( x < widthCount - 1 ) {
+                neighbors[count++] = PosIndexToFlatIndex( x + 1, y );
+            }
+            if ( y > 0 ) {
+                neighbors[count++] = PosIndexToFlatIndex( x, y - 1 );
+            }
+            if ( y < heightCount - 1 ) {
+                neighbors[count++] = PosIndexToFlatIndex( x, y + 1 );
+            }
+            if ( x > 0 && y > 0 ) {
+                neighbors[count++] = PosIndexToFlatIndex( x - 1, y - 1 );
+            }
+            if ( x < widthCount - 1 && y > 0 ) {
+                neighbors[count++] = PosIndexToFlatIndex( x + 1, y - 1 );
+            }
+            if ( x > 0 && y < heightCount - 1 ) {
+                neighbors[count++] = PosIndexToFlatIndex( x - 1, y + 1 );
+            }
+            if ( x < widthCount - 1 && y < heightCount - 1 ) {
+                neighbors[count++] = PosIndexToFlatIndex( x + 1, y + 1 );
+            }
+        }
+
+        public int IsoTileIndexFromWorldPos( Vector2 pos ) {
+            Vector2 map = WorldPosToMapPos( pos );
+            int x = (int)MathF.Floor(map.X);
+            int y = (int)MathF.Floor(map.Y);
+            if ( x >= 0 && x < widthCount && y >= 0 && y < heightCount ) {
+                return PosIndexToFlatIndex( x, y );
+            }
+            return -1;
+        }
+
+        public int PosIndexToFlatIndex( int x, int y ) {
+            return x + y * widthCount;
+        }
+
+        public (int, int) FlatIndexToPosIndex( int i ) {
+            int x = i % widthCount;
+            int y = i / widthCount;
+            return (x, y);
+        }
     }
+
 }

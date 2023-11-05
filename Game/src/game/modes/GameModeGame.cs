@@ -67,7 +67,8 @@ namespace Game {
 
         private UIMaster            uiMaster = new UIMaster();
 
-        private IsoGrid             grid = new IsoGrid(10, 10, 2);
+        private IsoGrid             groundGrid = new IsoGrid( 10, 10, 0 );
+        private IsoGrid             buildingGrid = new IsoGrid( 10, 10, 1 );
         private Entity[]            entities = new Entity[ 100 ];
         private SyncQueues          syncQueues = new SyncQueues();
         private int                 turnNumber = 1;
@@ -96,14 +97,14 @@ namespace Game {
             sprBall = Content.LoadSpriteTexture( "ball_basic.png" );
             sndHuh = Content.LoadWav( "huh.wav" );
 
-            grid.FillLevel( 0, sprGrid );
-            grid.PlaceTile( 0, 0, 1, sprGridBlock );
-            grid.PlaceTile( 2, 3, 1, sprGridBlock );
-            grid.PlaceTile( 3, 3, 1, sprGridBlock );
-            grid.PlaceTile( 7, 4, 1, sprGridBlock );
+            groundGrid.Fill( sprGrid );
+            buildingGrid.PlaceTile( 0, 0, IsoTileFlags.BLOCKED, sprGridBlock );
+            buildingGrid.PlaceTile( 2, 3, IsoTileFlags.BLOCKED, sprGridBlock );
+            buildingGrid.PlaceTile( 3, 3, IsoTileFlags.BLOCKED, sprGridBlock );
+            buildingGrid.PlaceTile( 7, 4, IsoTileFlags.BLOCKED, sprGridBlock );
 
-            Vector2 p = grid.MapPosToWorldPos( 5, 5, 1 );
-            MapApply_SpawnWorkder( p.ToFp(), 1 );
+            Vector2Fp p = buildingGrid.MapPosToWorldPos( 5, 5 );
+            MapApply_SpawnWorkder( p, 1 );
 
             syncQueues.Start();
         }
@@ -241,12 +242,29 @@ namespace Game {
                 }
             }
 
-            for ( int z = 0; z < grid.levelCount; z++ ) {
-                for ( int x = 0; x < grid.widthCount; x++ ) {
-                    for ( int y = grid.heightCount - 1; y >= 0; y-- ) {
-                        if ( grid.tiles[x, y, z].sprite != null ) {
-                            drawCommands.DrawSprite( grid.tiles[x, y, z].sprite, grid.tiles[x, y, z].worldPos, 0, z, grid.tiles[x, y, z].worldVanishingPoint );
-                        }
+            for ( int x = 0; x < groundGrid.widthCount; x++ ) {
+                for ( int y = groundGrid.heightCount - 1; y >= 0; y-- ) {
+                    int flatIndex = groundGrid.PosIndexToFlatIndex( x, y );
+                    if ( groundGrid.tiles[flatIndex].sprite != null ) {
+                        drawCommands.DrawSprite(
+                            groundGrid.tiles[flatIndex].sprite,
+                            groundGrid.tiles[flatIndex].worldPos.ToV2(),
+                            0, groundGrid.level,
+                            groundGrid.tiles[flatIndex].worldVanishingPoint
+                        );
+                    }
+                }
+            }
+
+            for ( int x = 0; x < buildingGrid.widthCount; x++ ) {
+                for ( int y = buildingGrid.heightCount - 1; y >= 0; y-- ) {
+                    int flatIndex = groundGrid.PosIndexToFlatIndex( x, y );
+                    if ( buildingGrid.tiles[flatIndex].sprite != null ) {
+                        drawCommands.DrawSprite( buildingGrid.tiles[flatIndex].sprite,
+                            buildingGrid.tiles[flatIndex].worldPos.ToV2(),
+                            0, buildingGrid.level,
+                            buildingGrid.tiles[flatIndex].worldVanishingPoint
+                        );
                     }
                 }
             }
@@ -262,10 +280,22 @@ namespace Game {
             }
 
             if ( CVars.DrawVanishingPoint.Value || false ) {
-                for ( int x = 0; x < grid.widthCount; x++ ) {
-                    for ( int y = grid.heightCount - 1; y >= 0; y-- ) {
-                        if ( grid.tiles[x, y, 1].sprite != null ) {
-                            drawCommands.DrawCircle( grid.tiles[x, y, 1].worldVanishingPoint, 1 );
+                for ( int x = 0; x < buildingGrid.widthCount; x++ ) {
+                    for ( int y = buildingGrid.heightCount - 1; y >= 0; y-- ) {
+                        int flatIndex = groundGrid.PosIndexToFlatIndex( x, y );
+                        if ( buildingGrid.tiles[flatIndex].sprite != null ) {
+                            drawCommands.DrawCircle( buildingGrid.tiles[flatIndex].worldVanishingPoint, 1 );
+                        }
+                    }
+                }
+            }
+
+            if ( CVars.DrawGroundGridWorldPoints.Value || false ) {
+                for ( int x = 0; x < groundGrid.widthCount; x++ ) {
+                    for ( int y = groundGrid.heightCount - 1; y >= 0; y-- ) {
+                        int flatIndex = groundGrid.PosIndexToFlatIndex( x, y );
+                        if ( groundGrid.tiles[flatIndex].sprite != null ) {
+                            drawCommands.DrawCircle( groundGrid.tiles[flatIndex].worldPos.ToV2(), 1 );
                         }
                     }
                 }
@@ -279,9 +309,22 @@ namespace Game {
                 }
             }
 
-
             if ( CVars.DrawPlayerStats.Value || false ) {
                 drawCommands.DrawText( $"PlayerNumber={localPlayerNumber}", Vector2.Zero );
+            }
+
+            if ( true ) {
+                Vector2 mousePosWorld = Engine.MouseWorldPos();
+                int index = groundGrid.IsoTileIndexFromWorldPos( mousePosWorld );
+                if ( index >= 0 ) {
+                    bool isBlocked = buildingGrid.tiles[index].flags.HasFlag( IsoTileFlags.BLOCKED );
+                    Vector4 color= isBlocked ? new Vector4( 1, 0, 0, 0.5f ) : new Vector4( 0, 1, 0, 0.5f );
+                    drawCommands.DEBUG_DrawConvexCollider( groundGrid.tiles[index].roofConvexCollider, color );
+                }
+
+                drawCommands.DrawText( $"mousePosWorld={mousePosWorld}", Vector2.Zero );
+
+                //drawCommands.DrawCircle( mousePosWorld, 1.0f );
             }
 
             //for ( int x = 0; x < grid.widthCount; x++ ) {

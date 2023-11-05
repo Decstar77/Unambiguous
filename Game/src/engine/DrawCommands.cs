@@ -128,13 +128,17 @@ namespace Game {
             commands.Add( cmd );
         }
 
-        public void DEBUG_DrawConvexCollider( ConvexCollider polyCollider ) {
+        public void DEBUG_DrawConvexCollider( ConvexCollider polyCollider, Vector4 color ) {
             List<Vector2> verts = polyCollider.Triangulate();
             DrawCommand cmd = new DrawCommand();
             cmd.type = DrawCommandType.TRIANGLES;
-            cmd.color = Colors.WHITE;
+            cmd.color = color;
             cmd.verts = verts.ToArray();
             commands.Add( cmd );
+        }
+
+        public void DEBUG_DrawConvexCollider( ConvexCollider polyCollider ) {
+            DEBUG_DrawConvexCollider( polyCollider, Colors.WHITE );
         }
 
         public void DrawText( string text, Vector2 p, bool center = false ) {
@@ -147,7 +151,7 @@ namespace Game {
             commands.Add( cmd );
         }
 
-        public void RenderDrawRect( Vector2 center, Vector2 dim, float rot ) {
+        public void DrawRect( Vector2 center, Vector2 dim, float rot ) {
             DrawCommand cmd = new DrawCommand();
             cmd.type = DrawCommandType.RECT;
             cmd.color = Colors.WHITE;
@@ -171,7 +175,7 @@ namespace Game {
             commands.Add( cmd );
         }
 
-        public void RenderDrawSprite( SpriteTexture texture, Vector2 center, float rot, Vector2 size ) {
+        public void DrawSprite( SpriteTexture texture, Vector2 center, float rot, Vector2 size ) {
             DrawCommand cmd = new DrawCommand();
             cmd.type = DrawCommandType.SPRITE;
             cmd.color = Colors.WHITE;
@@ -193,8 +197,6 @@ namespace Game {
             cmd.tr += center;
             cmd.br += center;
             cmd.tl += center;
-
-            cmd.c = center;
 
             commands.Add( cmd );
         }
@@ -222,7 +224,23 @@ namespace Game {
             cmd.br += center;
             cmd.tl += center;
 
-            cmd.c = center;
+            cmd.vanishingPoint = vanishingPoint;
+            cmd.gridLevel = level;
+
+            commands.Add( cmd );
+        }
+
+        public void DrawSpriteTL( SpriteTexture texture, Vector2 tl, int level, Vector2 vanishingPoint ) {
+            DrawCommand cmd = new DrawCommand();
+            cmd.type = DrawCommandType.SPRITE;
+            cmd.color = Colors.WHITE;
+            cmd.spriteTexture = texture;
+
+            Vector2 dim = new Vector2(texture.width, texture.height);
+            cmd.tl = tl;
+            cmd.tr = tl + new Vector2( dim.X, 0 );
+            cmd.bl = tl + new Vector2( 0, dim.Y );
+            cmd.br = tl + dim;
 
             cmd.vanishingPoint = vanishingPoint;
             cmd.gridLevel = level;
