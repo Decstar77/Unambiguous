@@ -39,7 +39,10 @@ namespace Game {
         public Vector2      visualPos;
 
         public bool         hasDestination;
-        public Vector2Fp      destination;
+        public int          prevWalkedIndex;
+        public Vector2Fp    destination;
+        public int          destIndex;
+        public FlowTile[]   flowField;
 
         public int gridLevel = 1;
         public int playerNumber;
@@ -47,8 +50,9 @@ namespace Game {
         public CircleCollider circleCollider;
         public bool           isSelected;
         public RectBounds     selectionBoundsLocal;
-        public RectBounds SelectionBoundsWorld { get { RectBounds w = selectionBoundsLocal; w.Translate( visualPos ); return w; } }
 
+        public CircleCollider CircleColliderWorld { get { CircleCollider w = circleCollider; w.Translate( pos ); return w; } }
+        public RectBounds SelectionBoundsWorld { get { RectBounds w = selectionBoundsLocal; w.Translate( visualPos ); return w; } }
 
         public void TeleportTo( Vector2Fp newPos ) {
             pos = newPos;
@@ -213,14 +217,19 @@ namespace Game {
             }
 
             if ( Engine.MouseJustUp( 2 ) ) {
-                for ( int entityIndex = 0; entityIndex < entities.Length; entityIndex++ ) {
-                    Entity ent = entities[entityIndex];
-                    if ( ent != null ) {
-                        if ( ent.isSelected == true ) {
-                            Vector2 worldPos = Engine.ScreenPosToWorldPos( Engine.MouseScreenPos() );
-                            MapCreateAction_MoveUnit( ent, worldPos );
+                Vector2 worldPos = Engine.ScreenPosToWorldPos( Engine.MouseScreenPos() );
+                int destIndex = groundGrid.IsoTileIndexFromWorldPos( worldPos );
+                if ( destIndex >= 0 ) {
+                    for ( int entityIndex = 0; entityIndex < entities.Length; entityIndex++ ) {
+                        Entity ent = entities[entityIndex];
+                        if ( ent != null ) {
+                            if ( ent.isSelected == true ) {
+                                MapCreateAction_MoveUnit( ent, destIndex );
+                            }
                         }
                     }
+                } else {
+                    Engine.AudioPlay( sndHuh );
                 }
             }
         }
@@ -232,7 +241,7 @@ namespace Game {
                 Entity ent = entities[ entityIndex ];
                 if ( ent != null && ent.sprite.texture != null ) {
                     Vector2 p = ent.pos.ToV2();
-                    ent.visualPos = Vector2.Lerp( ent.visualPos, p, 0.1f );
+                    ent.visualPos = Vector2.Lerp( ent.visualPos, p, 0.25f );
 
                     if ( ent.isSelected == true ) {
                         drawCommands.DrawSprite( sprWorkerSelection, ent.visualPos - new Vector2( 0.5f, 0 ), 0, ent.gridLevel, ent.visualPos );
@@ -280,12 +289,13 @@ namespace Game {
                 drawCommands.DrawRect( minWorld, maxWorld, new Vector4( 0.2f, 0.2f, 0.8f, 0.5f ) );
             }
 
-            if ( CVars.DrawVanishingPoint.Value || false ) {
+            if ( CVars.DrawVanishingPoint.Value || true ) {
                 for ( int x = 0; x < buildingGrid.widthCount; x++ ) {
                     for ( int y = buildingGrid.heightCount - 1; y >= 0; y-- ) {
                         int flatIndex = groundGrid.PosIndexToFlatIndex( x, y );
                         if ( buildingGrid.tiles[flatIndex].sprite != null ) {
-                            drawCommands.DrawCircle( buildingGrid.tiles[flatIndex].worldVanishingPoint, 1 );
+                            //drawCommands.DrawCircle( buildingGrid.tiles[flatIndex].worldVanishingPoint, 1 );
+                            drawCommands.DEBUG_DrawConvexCollider( buildingGrid.tiles[flatIndex].floorConvexCollider );
                         }
                     }
                 }
@@ -310,8 +320,24 @@ namespace Game {
                 }
             }
 
+            if ( CVars.DrawColliders.Value || true ) {
+                for ( int i = 0; i < entities.Length; i++ ) {
+                    if ( entities[i] != null ) {
+                        drawCommands.DrawCircle( entities[i].CircleColliderWorld, new Vector4( 0.5f, 0.5f, 0.8f, 0.7f ) );
+                    }
+                }
+            }
+
             if ( CVars.DrawPlayerStats.Value || false ) {
                 drawCommands.DrawText( $"PlayerNumber={localPlayerNumber}", Vector2.Zero );
+            }
+
+            if ( false && debugFlowTiles != null ) {
+                for ( int i = 0; i < debugFlowTiles.Length; i++ ) {
+                    Vector2 c = groundGrid.tiles[i].roofConvexCollider.ComputeCenter().ToV2();
+                    drawCommands.DrawCircle( c, 1 );
+                    drawCommands.DrawLine( c, c + debugFlowTiles[i].flow.ToV2() * 10, 0.75f );
+                }
             }
 
             if ( true ) {
@@ -326,60 +352,9 @@ namespace Game {
                 drawCommands.DrawText( $"mousePosWorld={mousePosWorld}", Vector2.Zero );
             }
 
-            if ( Engine.MouseJustUp( 2 ) ) {
-                Vector2 mousePosWorld = Engine.MouseWorldPos();
-                int index = groundGrid.IsoTileIndexFromWorldPos( mousePosWorld );
-                debugFlowTiles = buildingGrid.PathFind( index );
-            }
-
-            if ( debugFlowTiles != null ) {
-                for ( int i = 0; i < debugFlowTiles.Length; i++ ) {
-                    Vector2 c = groundGrid.tiles[i].roofConvexCollider.ComputeCenter();
-                    drawCommands.DrawCircle( c, 1 );
-                    drawCommands.DrawLine( c, c + debugFlowTiles[i].flow.ToV2() * 10, 0.75f );
-                }
-            }
-            
-            //for ( int x = 0; x < grid.widthCount; x++ ) {
-            //    for ( int y = grid.heightCount - 1; y >= 0; y-- ) {
-            //        if ( grid.tiles[x, y, 1].sprite != null ) {
-            //            drawCommands.DEBUG_DrawConvexCollider( grid.tiles[x, y, 1].convexCollider );
-            //        }
-            //    }
-            //}
-
-            //drawCommands.DrawCircle( localPlayer.circleCollider );
-
-            //ConvexCollider t = new ConvexCollider(
-            //    new Vector2(-10, -10),
-            //    new Vector2(-10, 10),
-            //    new Vector2(10, 10),
-            //    new Vector2(10, -10)
-            //);
-
-
-            //drawCommands.DrawRect( new Vector2( -10, -10 ), new Vector2( 10, 10 ) );
-            //drawCommands.DrawCircle( localPlayer.pos, 1 );
-
-            //drawCommands.DrawText($"{Engine.camera.pos}", new Vector2(0, 0));
-            //drawCommands.DrawText( $"{Engine.input.mousePos}", new Vector2( 0, 0 ) );
-
             uiMaster.UpdateAndRender( drawCommands );
 
             Engine.SubmitDrawCommands( drawCommands );
-        }
-
-        private Entity MapLookUpEntity( EntityId id ) {
-            for ( int entityIndex = 0; entityIndex < entities.Length; entityIndex++ ) {
-                Entity ent = entities[entityIndex];
-                if ( ent != null ) {
-                    if ( ent.id == id ) {
-                        return ent;
-                    }
-                }
-            }
-
-            return null;
         }
 
         private void MapTick( MapTurn player1Turn, MapTurn player2Turn ) {
@@ -397,19 +372,63 @@ namespace Game {
                 MapApplyAction( player2Turn.actions[actionIndex] );
             }
 
+            List<Entity> collisionEnts = new List<Entity>(100); // @TODO(DECLAN): Pre alloc this
+
             // Update entities
             for ( int entityIndex = 0; entityIndex < entities.Length; entityIndex++ ) {
                 Entity ent = entities[entityIndex];
                 if ( ent != null ) {
                     switch ( ent.type ) {
                         case EntityType.UNIT_WORKER: {
+                            collisionEnts.Add( ent );
+
                             if ( ent.hasDestination == true ) {
-                                ent.pos = Vector2Fp.Lerp( ent.pos, ent.destination, F64.FromFloat( 0.1f ) );
+                                int mapIndex = groundGrid.IsoTileIndexFromWorldPos( ent.pos );
+                                if ( mapIndex == ent.destIndex ) {
+                                    ent.hasDestination = false;
+                                }
+                                else if ( mapIndex >= 0 ) {
+                                    Vector2Fp flow = Vector2Fp.Zero;
+                                    if ( ent.flowField[mapIndex].parentIndex != -1 ) {
+                                        flow = ent.flowField[mapIndex].flow;
+                                        ent.prevWalkedIndex = mapIndex;
+                                    } else if ( ent.prevWalkedIndex != -1 ){
+                                        flow = ent.flowField[ent.prevWalkedIndex].flow;
+                                    }
+
+                                    ent.pos += flow;
+                                }
                             }
                         }
                         break;
                     }
                 }
+            }
+
+            for ( int entityIndex1 = 0; entityIndex1 < collisionEnts.Count; entityIndex1++ ) {
+                Entity entA = collisionEnts[entityIndex1];
+                for ( int tileIndex = 0; tileIndex < buildingGrid.tiles.Length; tileIndex++ ) {
+                    if ( buildingGrid.tiles[tileIndex].flags.HasFlag( IsoTileFlags.BLOCKED ) ) {
+                        ManifoldFp manifold;
+                        if ( CollisionTestsFp.CircleVsConvex(
+                            entA.CircleColliderWorld,
+                            buildingGrid.tiles[tileIndex].floorConvexCollider, 
+                            out manifold ) ) {
+                            entA.pos -= manifold.normal * manifold.penetration;
+                        }
+                    }
+                }
+
+                //for ( int entityIndex2 = 0; entityIndex2 < collisionEnts.Count; entityIndex2++ ) {
+                //    Entity entB = collisionEnts[entityIndex2];
+                //    if ( entA != entB ) {
+                //        if ( entA.CircleColliderWorld.Intersects( entB.CircleColliderWorld ) ) {
+                //            Vector2Fp dir = ( entA.pos - entB.pos ).Normalized();
+                //            entA.pos += dir * 0.1f;
+                //            entB.pos -= dir * 0.1f;
+                //        }
+                //    }
+                //}
             }
 
             turnNumber++;
@@ -428,6 +447,19 @@ namespace Game {
             return sum;
         }
 
+        private Entity MapLookUpEntity( EntityId id ) {
+            for ( int entityIndex = 0; entityIndex < entities.Length; entityIndex++ ) {
+                Entity ent = entities[entityIndex];
+                if ( ent != null ) {
+                    if ( ent.id == id ) {
+                        return ent;
+                    }
+                }
+            }
+
+            return null;
+        }
+
         public void MapApplyAction( MapAction mapAction ) {
             switch ( mapAction.GetMapActionType() ) {
                 case MapActionType.INVALID: {
@@ -436,10 +468,14 @@ namespace Game {
                 break;
                 case MapActionType.MOVE_UNITS: {
                     MapAction_MoveUnits action = ( MapAction_MoveUnits )mapAction;
+                    FlowTile[] flowField = buildingGrid.PathFind( action.destIndex );
+                    debugFlowTiles = flowField;
                     Entity ent = MapLookUpEntity( action.entId );
                     if ( ent != null ) {
                         ent.hasDestination = true;
-                        ent.destination = action.destination;
+                        ent.destIndex = action.destIndex;
+                        ent.prevWalkedIndex = groundGrid.IsoTileIndexFromWorldPos( ent.pos );
+                        ent.flowField = flowField;
                     }
                 }
                 break;
@@ -458,6 +494,7 @@ namespace Game {
                     ent.playerNumber = playerNumber;
                     ent.id.index = i;
                     ent.id.generation = 1;
+                    ent.circleCollider = new CircleCollider( Vector2Fp.FromFloat( -0.5f, 0.0f ), F64.FromInt( 3 ) );
                     return ent;
                 }
             }
@@ -478,13 +515,11 @@ namespace Game {
             return ent;
         }
 
-        public void MapCreateAction_MoveUnit( Entity ent, Vector2 destination ) {
+        public void MapCreateAction_MoveUnit( Entity ent, int destIndex ) {
             MapAction_MoveUnits action =new MapAction_MoveUnits();
             action.entId = ent.id;
-            action.destination = destination.ToFp();
+            action.destIndex = destIndex;
             localTurn.actions.Add( action );
-
-            //Engine.AudioPlay( sndHuh );
         }
 
         public override void Shutdown() {

@@ -1,17 +1,17 @@
-﻿using OpenTK.Mathematics;
-using System.Drawing;
+﻿using FixMath;
+using OpenTK.Mathematics;
 
 namespace Game {
-    public struct CircleCollider {
+    public struct CircleBounds {
         public Vector2 center;
         public float radius;
 
-        public CircleCollider() {
+        public CircleBounds() {
             center = Vector2.Zero;
             radius = 0;
         }
 
-        public CircleCollider( Vector2 center, float radius ) {
+        public CircleBounds( Vector2 center, float radius ) {
             this.center = center;
             this.radius = radius;
         }
@@ -111,21 +111,31 @@ namespace Game {
         }
     }
 
-    public struct ConvexCollider {
+    public struct ConvexBounds {
         public Vector2[] verts;
 
-        public ConvexCollider( params Vector2[] verts ) {
+        public ConvexBounds( params Vector2[] verts ) {
             this.verts = verts;
             SortPointsIntoClockWiseOrder();
         }
 
-        public ConvexCollider Clone() {
-            ConvexCollider clone = new ConvexCollider();
+        public ConvexBounds Clone() {
+            ConvexBounds clone = new ConvexBounds();
             clone.verts = new Vector2[verts.Length];
             for ( int i = 0; i < verts.Length; i++ ) {
                 clone.verts[i] = verts[i];
             }
             return clone;
+        }
+
+        public ConvexCollider ToCollider() {
+            ConvexCollider c = new ConvexCollider();
+            c.verts = new Vector2Fp[verts.Length];
+            for ( int i = 0; i < verts.Length; i++ ) {
+                c.verts[i] = verts[i].ToFp();
+            }
+            c.SortPointsIntoClockWiseOrder();
+            return c;
         }
 
         public void Translate( Vector2 d ) {
@@ -245,7 +255,7 @@ namespace Game {
 
     public struct Bounds {
         public BoundsType type = BoundsType.INVALID;
-        public CircleCollider circle = new CircleCollider();
+        public CircleBounds circle = new CircleBounds();
         public RectBounds rect = new RectBounds();
 
         public Bounds() {
@@ -275,14 +285,14 @@ namespace Game {
     }
 
     public static class Intersections {
-        public static bool CircleVsCircle( CircleCollider c1, CircleCollider c2 ) {
+        public static bool CircleVsCircle( CircleBounds c1, CircleBounds c2 ) {
             // Do this with squared lengths to avoid a sqrt call
             float distance = (c1.center - c2.center).LengthSquared;
             float radiusSum = c1.radius + c2.radius;
             return distance <= radiusSum * radiusSum;
         }
 
-        public static bool CircleVsRect( CircleCollider c, RectBounds r ) {
+        public static bool CircleVsRect( CircleBounds c, RectBounds r ) {
             Vector2 closest = r.GetClosestPoint(c.center);
             return ( closest - c.center ).LengthSquared < c.radius * c.radius;
         }
@@ -292,7 +302,7 @@ namespace Game {
                 r1.min.Y <= r2.max.Y && r1.max.Y >= r2.min.Y;
         }
 
-        public static bool CircleVsBounds( CircleCollider c, Bounds b ) {
+        public static bool CircleVsBounds( CircleBounds c, Bounds b ) {
             switch ( b.type ) {
                 case BoundsType.CIRCLE:
                     return CircleVsCircle( c, b.circle );
@@ -332,7 +342,7 @@ namespace Game {
     }
 
     public static class CollisionTests {
-        public static bool CircleVsConvex( CircleCollider c, ConvexCollider v, out Manifold m ) {
+        public static bool CircleVsConvex( CircleBounds c, ConvexBounds v, out Manifold m ) {
             Vector2 axis = Vector2.Zero;
             float axisDepth = 0;
             float minA = 0;
@@ -421,7 +431,7 @@ namespace Game {
         }
 
         // Assumes axis is normalized!!
-        private static void ProjectCircle( CircleCollider circle, Vector2 axis, out float min, out float max ) {
+        private static void ProjectCircle( CircleBounds circle, Vector2 axis, out float min, out float max ) {
             Vector2 direction = axis;
             Vector2 directionAndRadius = direction * circle.radius;
 

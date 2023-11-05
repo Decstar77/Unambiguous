@@ -10,6 +10,7 @@
     public class CVars {
         public static BoolCVar DrawVanishingPoint = new BoolCVar(false);
         public static BoolCVar DrawSelectionBounds = new BoolCVar(false);
+        public static BoolCVar DrawColliders = new BoolCVar(false);
         public static BoolCVar DrawPlayerStats = new BoolCVar(false);
         public static BoolCVar DrawGroundGridWorldPoints = new BoolCVar(false);
     }

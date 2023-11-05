@@ -147,6 +147,7 @@ namespace FixMath
         public static F64 Distance(Vector2Fp a, Vector2Fp b) { return Length(a - b); }
         public static F64 DistanceFast(Vector2Fp a, Vector2Fp b) { return LengthFast(a - b); }
         public static F64 DistanceFastest(Vector2Fp a, Vector2Fp b) { return LengthFastest(a - b); }
+        public static F64 DistanceSqr( Vector2Fp a, Vector2Fp b ) { return LengthSqr( a - b ); }
 
         public static Vector2Fp Min(Vector2Fp a, Vector2Fp b) { return new Vector2Fp(Fixed64.Min(a.RawX, b.RawX), Fixed64.Min(a.RawY, b.RawY)); }
         public static Vector2Fp Max(Vector2Fp a, Vector2Fp b) { return new Vector2Fp(Fixed64.Max(a.RawX, b.RawX), Fixed64.Max(a.RawY, b.RawY)); }

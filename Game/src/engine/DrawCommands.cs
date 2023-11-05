@@ -77,17 +77,22 @@ namespace Game {
             commands.Clear();
         }
 
-        public void DrawCircle( Vector2 pos, float radius ) {
+        public void DrawCircle( Vector2 pos, float radius, Vector4 color ) {
             DrawCommand cmd = new DrawCommand();
             cmd.type = DrawCommandType.CIRCLE;
-            cmd.color = Colors.WHITE;
+            cmd.color = color;
             cmd.c = pos;
             cmd.r = radius;
             commands.Add( cmd );
         }
 
+        public void DrawCircle( Vector2 pos, float radius ) { DrawCircle( pos, radius, Colors.WHITE ); }
+        public void DrawCircle( CircleBounds circle, Vector4 color ) { DrawCircle( circle.center, circle.radius, color ); }
+        public void DrawCircle( CircleBounds circle ) { DrawCircle( circle.center, circle.radius, Colors.WHITE ); }
+        public void DrawCircle( CircleCollider circle, Vector4 color ) { DrawCircle( circle.ToBounds(), color ); }
+
         public void DrawCircle( CircleCollider circle ) {
-            DrawCircle( circle.center, circle.radius );
+            DrawCircle( circle.ToBounds() );
         }
 
         public void DrawRect( Vector2 bl, Vector2 tr, Vector4 color ) {
@@ -128,7 +133,7 @@ namespace Game {
             commands.Add( cmd );
         }
 
-        public void DEBUG_DrawConvexCollider( ConvexCollider polyCollider, Vector4 color ) {
+        public void DEBUG_DrawConvexCollider( ConvexBounds polyCollider, Vector4 color ) {
             List<Vector2> verts = polyCollider.Triangulate();
             DrawCommand cmd = new DrawCommand();
             cmd.type = DrawCommandType.TRIANGLES;
@@ -137,8 +142,16 @@ namespace Game {
             commands.Add( cmd );
         }
 
-        public void DEBUG_DrawConvexCollider( ConvexCollider polyCollider ) {
+        public void DEBUG_DrawConvexCollider( ConvexBounds polyCollider ) {
             DEBUG_DrawConvexCollider( polyCollider, Colors.WHITE );
+        }
+
+        public void DEBUG_DrawConvexCollider( ConvexCollider polyCollider, Vector4 color ) {
+            DEBUG_DrawConvexCollider( polyCollider.ToBounds(), color );
+        }
+
+        public void DEBUG_DrawConvexCollider( ConvexCollider polyCollider ) {
+            DEBUG_DrawConvexCollider( polyCollider.ToBounds(), Colors.WHITE );
         }
 
         public void DrawText( string text, Vector2 p, bool center = false ) {
@@ -264,7 +277,7 @@ namespace Game {
             DrawCommand cmd = new DrawCommand();
             cmd.type = DrawCommandType.RECT;
             cmd.color = color;
-            
+
             cmd.tl = points[0];
             cmd.tr = points[1];
             cmd.br = points[2];
