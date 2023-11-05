@@ -247,5 +247,34 @@ namespace Game {
 
             commands.Add( cmd );
         }
+
+        public void DrawLine( Vector2 start, Vector2 end, float thicc, Vector4 color ) {
+            Vector2 direction = Vector2.Normalize( end - start );
+            Vector2 perpendicular = new Vector2( direction.Y, -direction.X );
+
+            Span<Vector2> points = stackalloc Vector2[] {
+                start + perpendicular * ( thicc / 2.0f ),
+                start - perpendicular * ( thicc / 2.0f ),
+                end + perpendicular * ( thicc / 2.0f ),
+                end - perpendicular * ( thicc / 2.0f )
+            };
+
+            GeoUtil.SortPointsIntoClockWiseOrder( ref points );
+
+            DrawCommand cmd = new DrawCommand();
+            cmd.type = DrawCommandType.RECT;
+            cmd.color = color;
+            
+            cmd.tl = points[0];
+            cmd.tr = points[1];
+            cmd.br = points[2];
+            cmd.bl = points[3];
+
+            commands.Add( cmd );
+        }
+
+        public void DrawLine( Vector2 start, Vector2 end, float thicc ) {
+            DrawLine( start, end, thicc, Colors.WHITE );
+        }
     }
 }

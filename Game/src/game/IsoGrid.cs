@@ -109,11 +109,14 @@ namespace Game {
             return map;
         }
 
-        public FlowTile[] PathFind( int tileX, int tileY ) {
+        public FlowTile[] PathFind( int destIndex ) {
             FlowTile[] flowTiles = new FlowTile[widthCount * heightCount];
-            int destIndex = PosIndexToFlatIndex( tileX, tileY );
-            flowTiles[destIndex].parentIndex = -1;
-            flowTiles[destIndex].pos = MapPosToWorldPos( tileX, tileY );
+            for (int i = 0; i < flowTiles.Length; i++ ) {
+                flowTiles[i].parentIndex = -1;
+            }
+
+            flowTiles[destIndex].parentIndex = -2;
+            flowTiles[destIndex].pos = tiles[destIndex].worldPos;
             flowTiles[destIndex].flow = Vector2Fp.Zero;
 
             int neighborsCount = 0;
@@ -124,12 +127,13 @@ namespace Game {
             while ( frontier.Count != 0 ) {
                 int tileIndex = frontier.Dequeue();
                 GetNeighbors( ref neighbors, ref neighborsCount, tileIndex );
-                for ( int i = 0; i < neighborsCount; i++ ) {
-                    int neighborIndex = neighbors[i];
-                    if ( flowTiles[neighborIndex].parentIndex == -1 && tiles[i].flags != IsoTileFlags.BLOCKED ) { 
+                for ( int _I = 0; _I < neighborsCount; _I++ ) {
+                    int neighborIndex = neighbors[_I];
+                    if ( flowTiles[neighborIndex].parentIndex == -1 && tiles[neighborIndex].flags != IsoTileFlags.BLOCKED ) { 
                         flowTiles[neighborIndex].parentIndex = tileIndex;
-                        flowTiles[neighborIndex].pos = tiles[i].worldPos;
+                        flowTiles[neighborIndex].pos = tiles[neighborIndex].worldPos;
                         flowTiles[neighborIndex].flow = flowTiles[tileIndex].pos - flowTiles[neighborIndex].pos;
+                        flowTiles[neighborIndex].flow = Vector2Fp.NormalizeFast( flowTiles[neighborIndex].flow );
                         frontier.Enqueue( neighborIndex );
                     }
                 }

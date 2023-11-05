@@ -134,6 +134,14 @@ namespace Game {
             }
         }
 
+        public Vector2 ComputeCenter() {
+            Vector2 center = Vector2.Zero;
+            for ( int i = 0; i < verts.Length; i++ ) {
+                center += verts[i];
+            }
+            return center / verts.Length;
+        }
+
         public Vector2 GetClosestPoint( Vector2 p ) {
             float minDistance = float.MaxValue;
             Vector2 closePoint = Vector2.Zero;
@@ -430,7 +438,22 @@ namespace Game {
                 max = t;
             }
         }
-
     }
 
+    public static class GeoUtil {
+        public static void SortPointsIntoClockWiseOrder(ref Span<Vector2> points ) {
+            Vector2 centroid = Vector2.Zero;
+            for ( int i = 0; i < points.Length; i++ ) {
+                centroid += points[i];
+            }
+
+            centroid /= points.Length;
+
+            points.Sort( ( a, b ) => {
+                float a1 = MathF.Atan2( a.Y - centroid.Y, a.X - centroid.X );
+                float a2 = MathF.Atan2( b.Y - centroid.Y, b.X - centroid.X );
+                return a1.CompareTo( a2 );
+            } );
+        }
+    }
 }

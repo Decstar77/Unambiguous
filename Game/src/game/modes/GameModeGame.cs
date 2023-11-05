@@ -80,6 +80,7 @@ namespace Game {
         private Vector2             startDrag = Vector2.Zero;
         private Vector2             endDrag = Vector2.Zero;
         private Vector2             testVec = Vector2.Zero;
+        private FlowTile[]          debugFlowTiles = null;
 
         public override void Init( GameModeInitArgs args ) {
             isMultiplayer = args.multiplayer;
@@ -323,10 +324,22 @@ namespace Game {
                 }
 
                 drawCommands.DrawText( $"mousePosWorld={mousePosWorld}", Vector2.Zero );
-
-                //drawCommands.DrawCircle( mousePosWorld, 1.0f );
             }
 
+            if ( Engine.MouseJustUp( 2 ) ) {
+                Vector2 mousePosWorld = Engine.MouseWorldPos();
+                int index = groundGrid.IsoTileIndexFromWorldPos( mousePosWorld );
+                debugFlowTiles = buildingGrid.PathFind( index );
+            }
+
+            if ( debugFlowTiles != null ) {
+                for ( int i = 0; i < debugFlowTiles.Length; i++ ) {
+                    Vector2 c = groundGrid.tiles[i].roofConvexCollider.ComputeCenter();
+                    drawCommands.DrawCircle( c, 1 );
+                    drawCommands.DrawLine( c, c + debugFlowTiles[i].flow.ToV2() * 10, 0.75f );
+                }
+            }
+            
             //for ( int x = 0; x < grid.widthCount; x++ ) {
             //    for ( int y = grid.heightCount - 1; y >= 0; y-- ) {
             //        if ( grid.tiles[x, y, 1].sprite != null ) {
