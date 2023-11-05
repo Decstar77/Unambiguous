@@ -20,6 +20,12 @@ namespace Game {
         public Vector2Fp flow;
     }
 
+    public class FlowField {
+        public FlowTile[] tiles;
+        public CircleCollider destCircle;
+        public int destIndex;
+    }
+
     public struct IsoTile {
         public IsoTileFlags     flags;
         public int              flatIndex;
@@ -124,14 +130,14 @@ namespace Game {
             return map;
         }
 
-        public FlowTile[] PathFind( int destIndex ) {
+        public FlowField PathFind( int destIndex, Vector2Fp destPos ) {
             FlowTile[] flowTiles = new FlowTile[widthCount * heightCount];
             for ( int i = 0; i < flowTiles.Length; i++ ) {
                 flowTiles[i].parentIndex = -1;
             }
 
             flowTiles[destIndex].parentIndex = -2;
-            flowTiles[destIndex].pos = tiles[destIndex].worldPos;
+            flowTiles[destIndex].pos = destPos;
             flowTiles[destIndex].flow = Vector2Fp.Zero;
 
             int neighborsCount = 0;
@@ -148,7 +154,7 @@ namespace Game {
                     (int xIndexN, int yIndexN) = FlatIndexToPosIndex( neighborIndex );
                     if ( flowTiles[neighborIndex].parentIndex == -1 && tiles[neighborIndex].flags != IsoTileFlags.BLOCKED ) {
                         flowTiles[neighborIndex].parentIndex = tileIndex;
-                        flowTiles[neighborIndex].pos = tiles[neighborIndex].worldPos;
+                        flowTiles[neighborIndex].pos = tiles[neighborIndex].floorConvexCollider.center;
                         flowTiles[neighborIndex].flow = flowTiles[tileIndex].pos - flowTiles[neighborIndex].pos;
                         flowTiles[neighborIndex].flow = Vector2Fp.NormalizeFast( flowTiles[neighborIndex].flow );
                         flowTiles[neighborIndex].xDeltaIndex = xIndex - xIndexN;
@@ -167,7 +173,7 @@ namespace Game {
                     int dx = ix - destX;
                     int dy = iy - destY;
                     int steps = Math.Max( Math.Abs( dx ), Math.Abs( dy ) );
-                    // @HACK(DECLAN): Can't use floats here!!
+                    //@HACK( DECLAN ): Can't use floats here!!
                     float xInc = (float)dx / steps;
                     float yInc = (float)dy / steps;
                     float x = destX;
@@ -177,20 +183,25 @@ namespace Game {
                         x += xInc;
                         y += yInc;
                         int tileIndex = PosIndexToFlatIndex( (int)x, (int)y );
-                        if ( flowTiles[tileIndex].parentIndex == -1) {
+                        if ( flowTiles[tileIndex].parentIndex == -1 ) {
                             los = false;
                             break;
                         }
                     }
 
                     if ( los ) {
-                        flowTiles[i].flow = flowTiles[destIndex].pos - flowTiles[i].pos;
-                        flowTiles[i].flow = Vector2Fp.NormalizeFast( flowTiles[i].flow );
+                        flowTiles[i].flow = destPos - flowTiles[i].pos;
+                        flowTiles[i].flow = Vector2Fp.Normalize( flowTiles[i].flow );
                     }
                 }
             }
 
-            return flowTiles;
+            FlowField flowField = new FlowField();
+            flowField.tiles = flowTiles;
+            flowField.destIndex = destIndex;
+            flowField.destCircle = new CircleCollider( destPos, F64.Two );
+
+            return flowField;
         }
 
         public void GetNeighbors8( ref Span<int> neighbors, ref int count, int tileIndex ) {

@@ -19,6 +19,10 @@ namespace Game {
             return c;
         }
 
+        public bool ContainsPoint( Vector2Fp p ) {
+            return Vector2Fp.LengthSqr( p - center ) < radius * radius;
+        }
+
         public CircleBounds ToBounds() {
             CircleBounds clone = new CircleBounds();
             clone.center = center.ToV2();
@@ -33,6 +37,7 @@ namespace Game {
 
     public struct ConvexCollider {
         public Vector2Fp[] verts;
+        public Vector2Fp center;
 
         public ConvexCollider Clone() {
             ConvexCollider c = new ConvexCollider();
@@ -40,21 +45,24 @@ namespace Game {
             for ( int i = 0; i < verts.Length; i++ ) {
                 c.verts[i] = verts[i];
             }
+            ComputeCenter();
             return c;
-        }
-
-        public Vector2Fp ComputeCenter() {
-            Vector2Fp center = Vector2Fp.Zero;
-            for ( int i = 0; i < verts.Length; i++ ) {
-                center += verts[i];
-            }
-            return center / F64.FromInt( verts.Length );
         }
 
         public void Translate( Vector2Fp t ) {
             for ( int i = 0; i < verts.Length; i++ ) {
                 verts[i] += t;
             }
+            ComputeCenter();
+        }
+
+        public Vector2Fp ComputeCenter() {
+            center = Vector2Fp.Zero;
+            for ( int i = 0; i < verts.Length; i++ ) {
+                center += verts[i];
+            }
+            center = center / F64.FromInt( verts.Length );
+            return center;
         }
 
         public ConvexBounds ToBounds() {

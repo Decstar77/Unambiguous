@@ -39,10 +39,7 @@ namespace Game {
         public Vector2      visualPos;
 
         public bool         hasDestination;
-        public int          prevWalkedIndex;
-        public Vector2Fp    destination;
-        public int          destIndex;
-        public FlowTile[]   flowField;
+        public FlowField    flowField;
 
         public int gridLevel = 1;
         public int playerNumber;
@@ -84,7 +81,7 @@ namespace Game {
         private Vector2             startDrag = Vector2.Zero;
         private Vector2             endDrag = Vector2.Zero;
         private Vector2             testVec = Vector2.Zero;
-        private FlowTile[]          debugFlowTiles = null;
+        private FlowField           debugFlowField = null;
 
         public override void Init( GameModeInitArgs args ) {
             isMultiplayer = args.multiplayer;
@@ -217,18 +214,19 @@ namespace Game {
             }
 
             if ( Engine.MouseJustUp( 2 ) ) {
-                Vector2 worldPos = Engine.ScreenPosToWorldPos( Engine.MouseScreenPos() );
+                Vector2 worldPos = Engine.MouseWorldPos();
                 int destIndex = groundGrid.IsoTileIndexFromWorldPos( worldPos );
                 if ( destIndex >= 0 ) {
                     for ( int entityIndex = 0; entityIndex < entities.Length; entityIndex++ ) {
                         Entity ent = entities[entityIndex];
                         if ( ent != null ) {
                             if ( ent.isSelected == true ) {
-                                MapCreateAction_MoveUnit( ent, destIndex );
+                                MapCreateAction_MoveUnit( ent, destIndex, worldPos.ToFp() );
                             }
                         }
                     }
-                } else {
+                }
+                else {
                     Engine.AudioPlay( sndHuh );
                 }
             }
@@ -332,12 +330,14 @@ namespace Game {
                 drawCommands.DrawText( $"PlayerNumber={localPlayerNumber}", Vector2.Zero );
             }
 
-            if ( false && debugFlowTiles != null ) {
-                for ( int i = 0; i < debugFlowTiles.Length; i++ ) {
+            if ( true && debugFlowField != null ) {
+                for ( int i = 0; i < debugFlowField.tiles.Length; i++ ) {
                     Vector2 c = groundGrid.tiles[i].roofConvexCollider.ComputeCenter().ToV2();
                     drawCommands.DrawCircle( c, 1 );
-                    drawCommands.DrawLine( c, c + debugFlowTiles[i].flow.ToV2() * 10, 0.75f );
+                    drawCommands.DrawLine( c, c + debugFlowField.tiles[i].flow.ToV2() * 10, 0.75f );
                 }
+
+                drawCommands.DrawCircle( debugFlowField.destCircle, new Vector4( 1, 1, 0, 1 ) );
             }
 
             if ( true ) {
@@ -384,19 +384,16 @@ namespace Game {
 
                             if ( ent.hasDestination == true ) {
                                 int mapIndex = groundGrid.IsoTileIndexFromWorldPos( ent.pos );
-                                if ( mapIndex == ent.destIndex ) {
-                                    ent.hasDestination = false;
+                                if ( mapIndex == ent.flowField.destIndex ) {
+                                    ent.pos += Vector2Fp.NormalizeFast( ent.flowField.destCircle.center - ent.pos );
                                 }
                                 else if ( mapIndex >= 0 ) {
-                                    Vector2Fp flow = Vector2Fp.Zero;
-                                    if ( ent.flowField[mapIndex].parentIndex != -1 ) {
-                                        flow = ent.flowField[mapIndex].flow;
-                                        ent.prevWalkedIndex = mapIndex;
-                                    } else if ( ent.prevWalkedIndex != -1 ){
-                                        flow = ent.flowField[ent.prevWalkedIndex].flow;
-                                    }
-
+                                    Vector2Fp flow = ent.flowField.tiles[mapIndex].flow;
                                     ent.pos += flow;
+                                }
+
+                                if ( ent.flowField.destCircle.ContainsPoint( ent.pos ) ) {
+                                    ent.hasDestination = false;
                                 }
                             }
                         }
@@ -412,7 +409,7 @@ namespace Game {
                         ManifoldFp manifold;
                         if ( CollisionTestsFp.CircleVsConvex(
                             entA.CircleColliderWorld,
-                            buildingGrid.tiles[tileIndex].floorConvexCollider, 
+                            buildingGrid.tiles[tileIndex].floorConvexCollider,
                             out manifold ) ) {
                             entA.pos -= manifold.normal * manifold.penetration;
                         }
@@ -468,13 +465,11 @@ namespace Game {
                 break;
                 case MapActionType.MOVE_UNITS: {
                     MapAction_MoveUnits action = ( MapAction_MoveUnits )mapAction;
-                    FlowTile[] flowField = buildingGrid.PathFind( action.destIndex );
-                    debugFlowTiles = flowField;
+                    FlowField flowField = buildingGrid.PathFind( action.destIndex, action.destPos );
+                    debugFlowField = flowField;
                     Entity ent = MapLookUpEntity( action.entId );
                     if ( ent != null ) {
                         ent.hasDestination = true;
-                        ent.destIndex = action.destIndex;
-                        ent.prevWalkedIndex = groundGrid.IsoTileIndexFromWorldPos( ent.pos );
                         ent.flowField = flowField;
                     }
                 }
@@ -515,10 +510,11 @@ namespace Game {
             return ent;
         }
 
-        public void MapCreateAction_MoveUnit( Entity ent, int destIndex ) {
+        public void MapCreateAction_MoveUnit( Entity ent, int destIndex, Vector2Fp destPos ) {
             MapAction_MoveUnits action =new MapAction_MoveUnits();
             action.entId = ent.id;
             action.destIndex = destIndex;
+            action.destPos = destPos;
             localTurn.actions.Add( action );
         }
 

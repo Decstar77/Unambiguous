@@ -16,6 +16,7 @@ namespace Game {
     public class MapAction_MoveUnits : MapAction {
         public EntityId     entId;
         public int          destIndex;
+        public Vector2Fp    destPos;
 
         public MapActionType GetMapActionType() {
             return MapActionType.MOVE_UNITS;
@@ -24,11 +25,13 @@ namespace Game {
         public void Plonk( List<byte> data ) {
             ByteOps.PlonkEntityId( data, entId );
             ByteOps.PlonkInt( data, destIndex );
+            ByteOps.PlonkVector2Fp( data, destPos );
         }
 
         public void Scoop( byte[] data, ref int offset ) {
             entId = ByteOps.ScoopEntityId( data, ref offset );
             destIndex = ByteOps.ScoopInt( data, ref offset );
+            destPos = ByteOps.ScoopVector2Fp( data, ref offset );
         }
     }
 }
