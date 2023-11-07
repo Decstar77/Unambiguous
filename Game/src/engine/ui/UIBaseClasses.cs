@@ -1,4 +1,5 @@
-﻿using OpenTK.Mathematics;
+﻿using Cyotek.Drawing.BitmapFont;
+using OpenTK.Mathematics;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace Game {
@@ -47,7 +48,7 @@ namespace Game {
 
     public delegate void OnClickDelegate();
     public delegate void OnHoverDelegate( Vector2 mousePos );
-    
+
     public abstract class UIElement {
         public Vector2 computedSize = Vector2.Zero;
         public Vector2 computedPos = Vector2.Zero;
@@ -59,8 +60,8 @@ namespace Game {
         public UIConstraint widthConstraint = new UIConstraintFixed( 0 );
         public UIConstraint heightConstraint = new UIConstraintFixed( 0 );
 
-        public OnClickDelegate onClick = null;
-        public OnHoverDelegate onHover = null;
+        public List<OnClickDelegate> onClick = new List<OnClickDelegate>();
+        public List<OnHoverDelegate> onHover = new List<OnHoverDelegate>();
 
         public abstract void Draw( DrawCommands drawCommands, RectBounds rect );
         public abstract void ComputeSize( Vector2 parentSize );
@@ -70,16 +71,16 @@ namespace Game {
         }
 
         public virtual void OnHover( Vector2 mousePos ) {
-            if ( onHover != null ) {
-                onHover( mousePos );
+            for ( int i = 0; i < onHover.Count; i++ ) {
+                onHover[i]( mousePos );
             }
         }
-        
+
         public virtual void OnUnhover( Vector2 mousePos ) { }
         public virtual void OnPress( Vector2 mousePos ) { }
         public virtual void OnRelease( Vector2 mousePos ) {
-            if ( onClick != null ) {
-                onClick();
+            for ( int i = 0; i < onClick.Count; i++ ) {
+                onClick[i]();
             }
         }
     }
@@ -144,6 +145,34 @@ namespace Game {
         }
     }
 
+    public class UITabWiget : UIElement {
+        private List<UIElement> tabs = new List<UIElement>();
+        private List<string> tabNames = new List<string>();
+        private int selectedTab = 0;
+
+        public void AddTab( string name, UIElement element ) {
+            tabs.Add( element );
+            tabNames.Add( name );
+        }
+
+        public override void Draw( DrawCommands drawCommands, RectBounds rect ) {
+            
+        }
+        
+        public override void ComputeSize( Vector2 parentSize ) {
+            float w = widthConstraint.Compute( parentSize.X );
+            float h = heightConstraint.Compute( parentSize.Y );
+            computedSize = new Vector2( w, h );
+        }
+
+        public override void ComputePos( Vector2 parentSize ) {
+            float x = xConstraint.Compute( parentSize.X );
+            float y = yConstraint.Compute( parentSize.Y );
+            computedPos = new Vector2( x, y );
+        }
+    }
+
+
     public class UIMaster {
         public List<UIElement> elements = new List<UIElement>();
 
@@ -163,7 +192,6 @@ namespace Game {
                 element.ComputePos( size );
                 RectBounds rect = element.GetRect();
                 Vector2 mousePos = Engine.MouseScreenPos();
-
 
                 element.isPressed = false;
                 if ( rect.ContainsPoint( mousePos ) ) {

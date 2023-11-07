@@ -14,11 +14,10 @@ namespace Game {
         public override void Init( GameModeInitArgs args ) {
             sndButtonHover = Content.LoadWav( "sfxd03.wav" );
             sndButtonClick = Content.LoadWav( "sfxd05.wav" );
-            AddButton( "Connect", () => { 
-                Engine.AudioPlay( sndButtonClick );
+            AddButton( "Connect", () => {
                 Engine.NetworkConnectToServer();
             } );
-            AddButton( "Back", () => { 
+            AddButton( "Back", () => {
                 Engine.AudioPlay( sndButtonClick );
                 Engine.MoveToGameMode( new GameModeMainMenu(), new GameModeInitArgs() );
             } );
@@ -30,8 +29,9 @@ namespace Game {
             button.yConstraint = new UIConstraintRelative( buttonY );
             button.widthConstraint = new UIConstraintRelative( 0.15f );
             button.heightConstraint = new UIConstraintAspect( 0.53f, button.widthConstraint );
-            button.onClick = onClick;
-            button.onHover = ( p ) => Engine.AudioPlay( sndButtonHover );
+            button.onClick.Add( () => Engine.AudioPlay( sndButtonClick ) );
+            button.onClick.Add( onClick );
+            button.onHover.Add( ( p ) => Engine.AudioPlay( sndButtonHover ) );
             uiMaster.elements.Add( button );
             buttonY += buttonYStep;
         }
@@ -43,7 +43,7 @@ namespace Game {
             if ( length > 0 ) {
                 GamePacketType type = (GamePacketType )data[ 0 ];
                 if ( type == GamePacketType.MAP_START ) {
-                    localPlayerNumber = data[ 1 ];
+                    localPlayerNumber = data[1];
                 }
             }
         }

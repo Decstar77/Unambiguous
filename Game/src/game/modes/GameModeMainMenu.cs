@@ -13,15 +13,9 @@ namespace Game {
         public override void Init( GameModeInitArgs args ) {
             sndButtonHover = Content.LoadWav( "sfxd03.wav" );
             sndButtonClick = Content.LoadWav( "sfxd05.wav" );
-            AddButton( "Single Pringle", () => {
-                Engine.AudioPlay( sndButtonClick );
-                Engine.MoveToGameMode( new GameModeGame(), new GameModeInitArgs() );
-            } );
-            AddButton( "Many Penny", () => { 
-                Engine.AudioPlay( sndButtonClick ); 
-                Engine.MoveToGameMode( new GameModeMutliplayerMenu(), new GameModeInitArgs() ); 
-            } );
-            AddButton( "Options", () => { Engine.AudioPlay( sndButtonClick ); } );
+            AddButton( "Single Pringle", () => Engine.MoveToGameMode( new GameModeGame(), new GameModeInitArgs() ) );
+            AddButton( "Many Penny", () => Engine.MoveToGameMode( new GameModeMutliplayerMenu(), new GameModeInitArgs() ) );
+            AddButton( "Options", () => Engine.MoveToGameMode( new GameModeOptionsMenu(), new GameModeInitArgs() ) );
             AddButton( "Quit", () => Engine.QuitGame() );
         }
 
@@ -31,8 +25,9 @@ namespace Game {
             button.yConstraint = new UIConstraintRelative( buttonY );
             button.widthConstraint = new UIConstraintRelative( 0.15f );
             button.heightConstraint = new UIConstraintAspect( 0.53f, button.widthConstraint );
-            button.onClick = onClick;
-            button.onHover = ( p ) => Engine.AudioPlay( sndButtonHover );
+            button.onClick.Add( () => Engine.AudioPlay( sndButtonClick ) );
+            button.onClick.Add( onClick );
+            button.onHover.Add( ( p ) => Engine.AudioPlay( sndButtonHover ) );
             uiMaster.elements.Add( button );
             buttonY += buttonYStep;
         }

@@ -4,8 +4,9 @@ using SoLoud;
 namespace Game
 {
     public partial class Content {
-        public static string BasePath = "C:/Projects/CS/Mage/Content/";
-        
+        //public static string BasePath = "C:/Projects/CS/Mage/Content/";
+        public static string BasePath = "Content/";
+
         private static FontSystem fontSystem = new FontSystem();
 
         public static string ResolvePath( string path ) {
